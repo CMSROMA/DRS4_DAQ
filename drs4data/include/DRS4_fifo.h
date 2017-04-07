@@ -18,9 +18,10 @@ class DRS4_fifo {
 public:
   DRS4_fifo();
 
-  // returns the pointer. The pointer is popped from the list.
-  // The caller is responsible of freeing the memory.
-  DRS4_data::Event *read() ;
+  // returns the pointer. The pointer is popped from the queue.
+  // The caller is responsible for freeing the memory.
+  // If the queue is empty, returns null pointer.
+  DRS4_data::Event* read() ;
   // Reserve memory and push the pointer
   int write(DRS4_data::Event *) ;
 
