@@ -36,6 +36,13 @@ private:
   bool f_stop;
   bool f_stopWhenEmpty;
 
+  /* Monitoring */
+
+  std::vector<float> times;
+  std::vector<float> amplitudes;
+
+  void processEvent();
+
 };
 
 

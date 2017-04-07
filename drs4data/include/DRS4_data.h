@@ -21,17 +21,30 @@ namespace DRS4_data {
      char           version;
   } FHEADER;
 
+
   typedef struct {
      char           time_header[4];
   } THEADER;
+
 
   typedef struct {
      char           bn[2];
      unsigned short board_serial_number;
   } BHEADER;
 
-  typedef struct {
-     char           event_header[4];
+
+  class EHEADER{
+  public:
+    EHEADER();
+
+    void setEvtNumber(unsigned evtnum) { event_serial_number = evtnum; }
+    void setTimeStamp();
+    void setRange(unsigned short _range) { range = _range; }
+
+    int write(std::ofstream*) const;
+
+  private:
+     const char     event_header[4];
      unsigned int   event_serial_number;
      unsigned short year;
      unsigned short month;
@@ -41,12 +54,14 @@ namespace DRS4_data {
      unsigned short second;
      unsigned short millisecond;
      unsigned short range;
-  } EHEADER;
+  };
+
 
   typedef struct {
      char           tc[2];
      unsigned short trigger_cell;
   } TCHEADER;
+
 
   typedef struct {
      char           c[1];
@@ -90,15 +105,15 @@ namespace DRS4_data {
 //    void *Data() const { return dynamic_cast<void*>(&header); }
     // Size in bytes
   //  unsigned size() const ;
-    unsigned nChans() const { return _nchans; }
-    unsigned nBoards() const { return _nboards; }
+    unsigned nChans() const { return nchans; }
+    unsigned nBoards() const { return nboards; }
 
-    int write(std::ofstream &file);
+    int write(std::ofstream *) const ;
 
   private:
 
-    const unsigned _nchans;
-    const unsigned _nboards;
+    const unsigned nchans;
+    const unsigned nboards;
 
     EHEADER header;
     BHEADER *board;
