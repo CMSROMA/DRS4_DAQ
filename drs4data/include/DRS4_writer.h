@@ -18,7 +18,7 @@
 class DRS4_writer {
 
 public:
-  DRS4_writer(DRS *const, DRS4_fifo *const, const unsigned _nEvtMax = -1);
+  DRS4_writer(DRS *const, DRS4_fifo *const, std::vector<int> _nChans, const unsigned _nEvtMax = -1);
 
   void run();
   void stop() { f_stop = true; }
@@ -30,12 +30,13 @@ private:
 
   DRS *drs;
   DRSBoard *board;
+  std::vector<int> nChans; // FIXME: Is this member actually needed (boards can tell how many chans are readout)
 
   DRS4_fifo *const fifo;
   DRS4_data::Event *event;
 
   // Event counter
-  unsigned nEvents;
+  unsigned iEvent;
   const unsigned nEvtMax;
 
   bool f_stop;

@@ -9,6 +9,7 @@
 
 #include <thread>
 #include <string>
+#include <iostream>
 
 #include "DRS4_fifo.h"
 #include "DRS4_writer.h"
@@ -35,6 +36,18 @@ int main(int argc, char* argv[]) {
         b->GetBoardSerialNumber(), b->GetFirmwareVersion());
   }
 
+  /* Examine command-line input for requested number(s) of channels */
+  std::vector<int> nChansVec;
+  for (int iboard=0; iboard<drs->GetNumberOfBoards(); iboard++) {
+    int nChans = 4;
+    if(argc > iarg) nChans = atoi(argv[iarg]); iarg++;
+    if(nChans>4) {
+      std::cout << "WARNING: Requested number of channels for board #"
+          << iboard << " is " << nChans << ". Correcting to 4.\n";
+      nChans = 4;
+    }
+  }
+
   /* exit if no board found */
   int nBoards = drs->GetNumberOfBoards();
   if (nBoards == 0) {
@@ -42,7 +55,7 @@ int main(int argc, char* argv[]) {
      return 0;
   }
 
-  DRS4_writer writer(drs, fifo, nEvtMax);
+  DRS4_writer writer(drs, fifo, nChansVec, nEvtMax);
 
   DRS4_reader reader(fifo, datfilename.c_str());
 

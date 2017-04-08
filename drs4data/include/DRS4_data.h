@@ -10,8 +10,11 @@
 #ifndef DRS4DATA_INCLUDE_DRS4_DATA_H_
 #define DRS4DATA_INCLUDE_DRS4_DATA_H_
 
+#include <vector>
 #include <fstream>
 #include "stdint.h"
+#include "DRS.h"
+
 
 namespace DRS4_data {
 
@@ -98,27 +101,31 @@ namespace DRS4_data {
   class Event {
 
   public:
-    Event(const unsigned nchans=4, const unsigned nboards=1);
+    Event(const unsigned iEvt, const unsigned range);
     ~Event();
+
+    void AddBoard(DRSBoard *);
 
     // Pointer to data to be stored
 //    void *Data() const { return dynamic_cast<void*>(&header); }
     // Size in bytes
   //  unsigned size() const ;
-    unsigned nChans() const { return nchans; }
-    unsigned nBoards() const { return nboards; }
+   // unsigned nChans() const { return nchans; }
+   // unsigned nBoards() const { return nboards; }
 
     int write(std::ofstream *) const ;
 
   private:
 
-    const unsigned nchans;
-    const unsigned nboards;
+    Event();
+
+//    const unsigned nchans;
+ //   const unsigned nboards;
 
     EHEADER header;
-    BHEADER *board;
-    TCHEADER *tcell;
-    ChannelData **chData;
+    std::vector<BHEADER*> bheaders;
+    std::vector<TCHEADER*> tcells;
+    std::vector<std::vector<ChannelData*>> chData;
 
   };
 

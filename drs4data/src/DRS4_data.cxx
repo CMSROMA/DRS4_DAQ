@@ -71,13 +71,29 @@ namespace DRS4_data {
 
   /*** class Event ***/
 
-  Event::Event(const unsigned _nchans, const unsigned _nboards) :
-    nchans(_nchans), nboards(_nboards),
-    board(NULL), tcell(NULL),
-    chData(NULL)
+  Event::Event(const unsigned iEvt, const unsigned range)
   {
+    header.setEvtNumber(iEvt);
+    header.setTimeStamp();
+    header.setRange(range);
+  }
+
+
+  void Event::AddBoard(DRSBoard * newboard) {
+
+    BHEADER *bhdr = new BHEADER;
+    bhdr->bn[0] = 'B';
+    bhdr->bn[1] = '#';
+    bhdr->board_serial_number = newboard->GetBoardSerialNumber();
+    bheaders.push_back(bhdr);
+
+    TCHEADER *tchdr = new TCHEADER;
+    tchdr->tc[0] = 'T';
+    tchdr->tc[1] = '#';
+    tchdr->trigger_cell = newboard->GetTriggerCell(0); // FIXME
 
   }
+
 
 
   int Event::write(std::ofstream *file) const {
@@ -87,12 +103,12 @@ namespace DRS4_data {
 
     header.write(file);
 
-    for(unsigned iboard=0; iboard<nboards; iboard++) {
+    for(unsigned iboard=0; iboard<bheaders.size(); iboard++) {
 
-      file->write( reinterpret_cast<char*>(board+iboard), sizeof(BHEADER) );
-      file->write( reinterpret_cast<const char*>(tcell+iboard), sizeof(TCHEADER) );
+      file->write( reinterpret_cast<char*>(bheaders.at(iboard)), sizeof(BHEADER) );
+      file->write( reinterpret_cast<const char*>(tcells.at(iboard)), sizeof(TCHEADER) );
 
-      for (unsigned ichan=0; ichan<nchans; ichan++) {
+      for (unsigned ichan=0; ichan<chData.at(iboard).size(); ichan++) {
         file->write( reinterpret_cast<const char*>(&(chData[iboard][ichan])), sizeof(ChannelData) );
       } // loop over channels
 
