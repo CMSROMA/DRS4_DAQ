@@ -7,13 +7,13 @@
  *      Author: S. Lukic
  ****************************************************/
 
-#include <thread>
 #include <string>
 #include <iostream>
 
 #include "DRS4_fifo.h"
 #include "DRS4_writer.h"
 #include "DRS4_reader.h"
+
 
 
 int main(int argc, char* argv[]) {
@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
   /* Examine command-line input for requested number(s) of channels */
   std::vector<int> nChansVec;
   for (int iboard=0; iboard<drs->GetNumberOfBoards(); iboard++) {
-    int nChans = 4;
+    int nChans = 4; // Fixme: Is 4 the good default? Or are two channels used for one input?
     if(argc > iarg) nChans = atoi(argv[iarg]); iarg++;
     if(nChans>4) {
       std::cout << "WARNING: Requested number of channels for board #"
@@ -55,9 +55,16 @@ int main(int argc, char* argv[]) {
      return 0;
   }
 
-  DRS4_writer writer(drs, fifo, nChansVec, nEvtMax);
+  DRS4_writer writer(drs, fifo, nChansVec);
 
-  DRS4_reader reader(fifo, datfilename.c_str());
+  DRS4_reader reader(fifo);
+
+  writer.start(1000);
+  while (!writer.isRunning()) { std::this_thread::sleep_for(std::chrono::milliseconds(10)); };
+
+  int readerState = reader.run(datfilename.c_str());
+  if ( readerState < 0 ) writer.stop();
+
 
   return 0;
 }

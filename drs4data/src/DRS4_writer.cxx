@@ -10,25 +10,59 @@
 
 #include "math.h"
 #include "DRS4_writer.h"
+#include <iostream>
+
 
 DRS4_writer::DRS4_writer(DRS *const _drs, DRS4_fifo *const _fifo,
-                         std::vector<int> _nChans, const unsigned _nEvtMax) :
+                         std::vector<int> _nChans) :
   drs(_drs), board(NULL), nChans(_nChans),
-  fifo(_fifo), event(NULL), iEvent(0), nEvtMax(_nEvtMax), f_stop(false)
+  fifo(_fifo), event(NULL), iEvent(0),
+  internalThread(NULL), f_stop(false), f_isRunning(false)
 {
 }
 
-void DRS4_writer::run() {
 
-  while(!f_stop && iEvent<nEvtMax) {
+DRS4_writer::~DRS4_writer() {
+  if (internalThread) {
+    if(internalThread->joinable()) {
+      stop();
+    }
+  }
+}
 
-    event = new DRS4_data::Event(iEvent, int(floor( (drs->GetBoard(0)->GetCalibratedInputRange())*1000 + 0.5)) );
 
-    for (int iboard=0; iboard<drs->GetNumberOfBoards(); iboard++) {
+void DRS4_writer::start(const unsigned nEvtMax) {
 
+  f_stop = false;
+  internalThread = new std::thread(DRS4_writer::run, this, nEvtMax);
+}
+
+
+void DRS4_writer::stop() {
+  std::cout << "Stopping DRS4_writer.\n";
+  f_stop = true;
+  internalThread->join();
+  delete internalThread;
+  internalThread = NULL;
+}
+
+void DRS4_writer::run( DRS4_writer* w, const unsigned nEvtMax) {
+
+  w->f_isRunning = true;
+  std::cout << "Starting DRS4_writer.\n";
+
+  while(!w->f_stop && w->iEvent<nEvtMax) {
+
+    w->event = new DRS4_data::Event(w->iEvent, int(floor( (w->drs->GetBoard(0)->GetCalibratedInputRange())*1000 + 0.5)) );
+
+    for (int iboard=0; iboard<w->drs->GetNumberOfBoards(); iboard++) {
+
+      // TODO: Acquire data here into event
 
     } // Loop over the boards
 
-    iEvent++;
+    w->iEvent++;
   } // Loop over events
+
+  w->f_isRunning = false;
 }

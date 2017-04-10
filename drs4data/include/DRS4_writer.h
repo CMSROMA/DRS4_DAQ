@@ -14,14 +14,19 @@
 #include "DRS.h"
 #include "DRS4_fifo.h"
 
+#include <thread>
+
 
 class DRS4_writer {
 
 public:
-  DRS4_writer(DRS *const, DRS4_fifo *const, std::vector<int> _nChans, const unsigned _nEvtMax = -1);
+  DRS4_writer(DRS *const, DRS4_fifo *const, std::vector<int> _nChans);
+  ~DRS4_writer();
 
-  void run();
-  void stop() { f_stop = true; }
+  void start(const unsigned _nEvtMax = -1);
+  void stop() ;
+
+  bool isRunning() { return f_isRunning; }
 
 
 private:
@@ -37,9 +42,12 @@ private:
 
   // Event counter
   unsigned iEvent;
-  const unsigned nEvtMax;
+
+  std::thread *internalThread;
+  static void run( DRS4_writer*, const unsigned _nEvtMax = -1);
 
   bool f_stop;
+  bool f_isRunning;
 
 };
 

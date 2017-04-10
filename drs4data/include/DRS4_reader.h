@@ -18,13 +18,13 @@
 class DRS4_reader{
 
 public:
-  DRS4_reader(DRS4_fifo *const, const char *filename);
+  DRS4_reader(DRS4_fifo *const);
   ~DRS4_reader(); // close file
 
-  void run();
-  void stop() { f_stop = true; }
+  int run(const char *filename);
+  void stop() ;
   // Stop as soon as the fifo queue is empty
-  void stopWhenEmpty() { f_stopWhenEmpty = true; }
+  void stopWhenEmpty() ;
 
 private:
 
