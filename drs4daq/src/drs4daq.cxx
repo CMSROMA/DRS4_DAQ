@@ -13,11 +13,34 @@
 #include "DRS4_fifo.h"
 #include "DRS4_writer.h"
 #include "DRS4_reader.h"
+#include "DRS.h"
 
 
 
 int main(int argc, char* argv[]) {
 
+  /* do initial scan */
+  DRS *drs;
+  drs = new DRS();
+
+
+  /* exit if no board found */
+  int nBoards = drs->GetNumberOfBoards();
+  if (nBoards == 0) {
+     std::cout << "No DRS4 evaluation board found\n";
+     return 0;
+  }
+
+  /* show any found board(s) */
+  for (int i=0 ; i<drs->GetNumberOfBoards() ; i++) {
+    DRSBoard *b = drs->GetBoard(i);
+    std::cout << "Found DRS4 evaluation board, serial #" << b->GetBoardSerialNumber()
+        << ", firmware revision " << b->GetFirmwareVersion() << std::endl;
+  }
+  std::cout << "End of the list of boards." << std::endl;
+
+
+  /*** Command line input ***/
   int iarg = 1;
   std::string datfilename("test.dat");
   if(argc > iarg) datfilename = argv[iarg]; iarg++;
@@ -27,16 +50,6 @@ int main(int argc, char* argv[]) {
   std::vector<DRS4_data::BHEADER*> bheaders; // Board serial numbers
   DRS4_data::ChannelTimes *chTimes = new DRS4_data::ChannelTimes;
   DRS4_fifo *fifo = new DRS4_fifo;
-
-  /* do initial scan */
-  DRS *drs = new DRS();
-
-  /* show any found board(s) */
-  for (int i=0 ; i<drs->GetNumberOfBoards() ; i++) {
-    DRSBoard *b = drs->GetBoard(i);
-     printf("Found DRS4 evaluation board, serial #%d, firmware revision %d\n",
-        b->GetBoardSerialNumber(), b->GetFirmwareVersion());
-  }
 
   /* Examine command-line input for requested number(s) of channels */
   std::vector<int> nChansVec;
@@ -50,24 +63,77 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  /* exit if no board found */
-  int nBoards = drs->GetNumberOfBoards();
-  if (nBoards == 0) {
-     printf("No DRS4 evaluation board found\n");
-     return 0;
-  }
+  /* use first board with highest serial number as the master board */
+  DRSBoard *mb = drs->GetBoard(0);
 
+  /* common configuration for all boards */
+  for (int iboard=0 ; iboard<drs->GetNumberOfBoards() ; iboard++) {
+
+    std::cout << "Configuring board #" << iboard << std::endl;
+
+    DRSBoard *b = drs->GetBoard(iboard);
+
+    /* initialize board */
+    std::cout << "Initializing." << std::endl;
+    b->Init();
+
+    /* select external reference clock for slave modules */
+    /* NOTE: this only works if the clock chain is connected */
+    if (iboard > 0) {
+      if (b->GetFirmwareVersion() >= 21260) { // this only works with recent firmware versions
+         if (b->GetScaler(5) > 300000)        // check if external clock is connected
+            b->SetRefclk(true);               // switch to external reference clock
+      }
+    }
+
+    /* set sampling frequency */
+    std::cout << "Setting frequency" << std::endl;
+    b->SetFrequency(5, true);
+
+    /* set input range to -0.5V ... +0.5V */
+    std::cout << "Setting input range." << std::endl;
+    b->SetInputRange(0);
+
+    /* enable hardware trigger */
+    /* First: External LEMO/FP/TRBUS trigger
+     * Second: analog threshold (internal) trigger
+     */
+    std::cout << "Setting input range." << std::endl;
+    b->EnableTrigger(1, 0);
+
+    if (iboard == 0) {
+      /* master board: enable hardware trigger on CH1 at 50 mV positive edge */
+      std::cout << "Configuring master board." << std::endl;
+      b->SetTranspMode(1);
+      b->SetTriggerSource(1<<0);        // set CH1 as source
+      b->SetTriggerLevel(-0.05);        // -50 mV
+      b->SetTriggerPolarity(true);      // negative edge
+      b->SetTriggerDelayNs(0);          // zero ns trigger delay
+    } else {
+      /* slave boards: enable hardware trigger on Trigger IN */
+      std::cout << "Configuring slave board." << std::endl;
+      b->SetTriggerSource(1<<4);        // set Trigger IN as source
+      b->SetTriggerPolarity(false);     // positive edge
+    }
+  } // End loop for common configuration
+
+
+  /*** Writer and reader ***/
 
   DRS4_writer writer(drs, fifo, chTimes, bheaders);
 
   DRS4_reader reader(fifo, chTimes);
 
-  writer.start(1000);
+  // Start DAQ
+  writer.setAutoTrigger();
+  writer.start(nEvtMax);
   while (!writer.isRunning()) { std::this_thread::sleep_for(std::chrono::milliseconds(10)); };
 
-  int readerState = reader.run(datfilename.c_str(), bheaders);
+  int readerState = reader.run(datfilename.c_str(), bheaders, &writer);
   if ( readerState < 0 ) writer.stop();
 
+  writer.join();
+  reader.stopWhenEmpty();
 
   return 0;
 }

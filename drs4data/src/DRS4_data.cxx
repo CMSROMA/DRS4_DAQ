@@ -11,6 +11,7 @@
 #include "DRS4_data.h"
 #include <chrono>
 #include <iostream>
+#include "math.h"
 
 namespace DRS4_data {
 
@@ -70,13 +71,54 @@ namespace DRS4_data {
   }
 
 
+  void setCHeader(CHEADER &ch, int ichan) {
+    ch.c[0] = 'C';
+    char chnum[4];
+    snprintf(chnum, 4, "%03d", ichan);
+    // Copy char values
+    for (int ichar=0; ichar<3; ichar++) {
+      ch.cn[ichar] = chnum[ichar];
+    }
+  }
+
+
+
+
   /*** class Event ***/
 
-  Event::Event(const unsigned iEvt, const unsigned range)
+  Event::Event(const unsigned iEvt, DRS *drs)
   {
     header.setEvtNumber(iEvt);
     header.setTimeStamp();
-    header.setRange(range);
+    header.setRange(int(floor( (drs->GetBoard(0)->GetCalibratedInputRange())*1000 + 0.5)));
+
+    for( unsigned iboard=0; iboard<drs->GetNumberOfBoards(); iboard++) {
+      AddBoard(drs->GetBoard(iboard));
+    }
+
+  }
+
+
+  Event::~Event() {
+
+    while(!bheaders.empty()) {
+      delete bheaders.back();
+      bheaders.pop_back();
+    }
+
+    while(!tcells.empty()) {
+      delete tcells.back();
+      tcells.pop_back();
+    }
+
+    while(!chData.empty()) {
+      while(!chData.back().empty()) {
+        delete chData.back().back();
+        chData.back().pop_back();
+      }
+      chData.pop_back();
+    }
+
   }
 
 
@@ -92,19 +134,30 @@ namespace DRS4_data {
     tchdr->tc[0] = 'T';
     tchdr->tc[1] = '#';
     tchdr->trigger_cell = newboard->GetTriggerCell(0); // FIXME
+    tcells.push_back(tchdr);
+
+    std::vector<ChannelData*> channels;
+
+    for (unsigned ichan=0; ichan < 4; ichan++) {
+      ChannelData* cd = new ChannelData;
+      setCHeader(cd->ch, ichan);
+      channels.push_back(cd);
+    }
+
+    chData.push_back(channels);
 
   }
 
 
   ChannelData *const Event::getChData(int iboard, int ichan) const {
 
-    if ( iboard < 0 || iboard > chData.size() ) {
+    if ( iboard < 0 || iboard >= chData.size() ) {
       std::cout << "Event::getChData() WARNING: Requesting invalid board number "
           << iboard << "." << std::endl;
       return NULL;
     }
 
-    if (ichan < 0 || ichan > chData.at(iboard).size()) {
+    if (ichan < 0 || ichan >= chData.at(iboard).size()) {
       std::cout << "Event::getChData() WARNING: Requesting invalid channel number "
           << ichan << "." << std::endl;
       return NULL;
@@ -119,13 +172,19 @@ namespace DRS4_data {
     if(!file) return -1;
     if(!file->good()) return -2;
 
+    std::cout << "Storing event to file." << std::endl;
+
     header.write(file);
+    std::cout << "Stored event header." << std::endl;
 
     for(unsigned iboard=0; iboard<bheaders.size(); iboard++) {
 
+      std::cout << "Storing board #" << iboard << "." << std::endl;
       file->write( reinterpret_cast<char*>(bheaders.at(iboard)), sizeof(BHEADER) );
+      std::cout << "Stored board header." << std::endl;
       file->write( reinterpret_cast<const char*>(tcells.at(iboard)), sizeof(TCHEADER) );
 
+      std::cout << "Storing data." << std::endl;
       for (unsigned ichan=0; ichan<chData.at(iboard).size(); ichan++) {
         file->write( reinterpret_cast<const char*>(&(chData[iboard][ichan])), sizeof(ChannelData) );
       } // loop over channels

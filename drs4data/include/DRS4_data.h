@@ -45,6 +45,8 @@ namespace DRS4_data {
     void setTimeStamp();
     void setRange(unsigned short _range) { range = _range; }
 
+    unsigned getSerialNumber() const { return event_serial_number; }
+
     int write(std::ofstream*) const;
 
   private:
@@ -72,6 +74,7 @@ namespace DRS4_data {
      char           cn[3];
   } CHEADER;
 
+  void setCHeader(CHEADER &ch, int ichan);
 
 
   /*******************************
@@ -102,13 +105,19 @@ namespace DRS4_data {
   class Event {
 
   public:
-    Event(const unsigned iEvt, const unsigned range);
+    Event(const unsigned iEvt, DRS*);
     ~Event();
-
-    void AddBoard(DRSBoard *);
 
     // Pointer to data to be stored
     ChannelData *const getChData(int iboard, int ichan) const;
+    unsigned getNBoards() const { return chData.size(); }
+    unsigned getNChans(unsigned iboard) const {
+      if ( iboard < 0 || iboard >= getNBoards() ) return 0;
+      return chData.at(iboard).size();
+    }
+
+    unsigned getEvtNumber() const { return header.getSerialNumber(); }
+
 //    void *Data() const { return dynamic_cast<void*>(&header); }
     // Size in bytes
   //  unsigned size() const ;
@@ -120,6 +129,8 @@ namespace DRS4_data {
   private:
 
     Event();
+
+    void AddBoard(DRSBoard *);
 
 //    const unsigned nchans;
  //   const unsigned nboards;

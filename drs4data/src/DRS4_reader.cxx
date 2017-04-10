@@ -17,6 +17,7 @@ DRS4_reader::DRS4_reader(DRS4_fifo *const _fifo, DRS4_data::ChannelTimes *_chTim
 fifo(_fifo), event(NULL), chTimes(_chTimes), file(NULL),
 f_stop(false), f_stopWhenEmpty(false)
 {
+  std::cout << "DRS4_reader::DRS4_reader()." << std::endl;
 }
 
 DRS4_reader::~DRS4_reader() {
@@ -36,7 +37,8 @@ void DRS4_reader::stopWhenEmpty() {
 }
 
 
-int DRS4_reader::run(const char *filename, std::vector<DRS4_data::BHEADER*> bheaders) {
+int DRS4_reader::run(const char *filename,
+    std::vector<DRS4_data::BHEADER*> bheaders, DRS4_writer *writer) {
 
   file = new std::ofstream(filename, std::ios_base::binary & std::ios_base::trunc) ;
 
@@ -52,6 +54,7 @@ int DRS4_reader::run(const char *filename, std::vector<DRS4_data::BHEADER*> bhea
   file->write("DRS4", 4);
   file->write("TIME", 4);
 
+  std::cout << "Writing headers." << std::endl;
   for(int iboard=0; iboard<chTimes->size(); iboard++) {
     // Write board header
     file->write(bheaders.at(iboard)->bn, 2);
@@ -63,18 +66,22 @@ int DRS4_reader::run(const char *filename, std::vector<DRS4_data::BHEADER*> bhea
       file->write(reinterpret_cast<const char*>(chTimes->at(iboard).at(ichan)->tbins), DRS4_data::nChansDRS4*sizeof(float));
     }
   }
+  std::cout << "Done writing headers." << std::endl;
 
 
   while(!f_stop) {
 
     event = fifo->read();
+    std::cout << "Read event." << std::endl;
 
     if(event) {
+      std::cout << "Read event #" << event->getEvtNumber() << std::endl;
       event->write(file);
       processEvent();
+      delete event;
     }
     else {
-      if(f_stopWhenEmpty) {
+      if(f_stopWhenEmpty || !writer->isRunning()) {
         f_stop = true;
       }
       else {

@@ -21,13 +21,16 @@ class DRS4_writer {
 
 public:
   DRS4_writer(DRS *const, DRS4_fifo *const, DRS4_data::ChannelTimes*,
-      std::vector<DRS4_data::BHEADER*>);
+      std::vector<DRS4_data::BHEADER*>&);
   ~DRS4_writer();
 
   void start(const unsigned _nEvtMax = -1);
   void stop() ;
+  void join() ;
 
   bool isRunning() { return f_isRunning; }
+
+  void setAutoTrigger(bool at=true) { f_autoTrigger = at; }
 
 
 private:
@@ -48,6 +51,7 @@ private:
 
   bool f_stop;
   bool f_isRunning;
+  bool f_autoTrigger;
 
 };
 

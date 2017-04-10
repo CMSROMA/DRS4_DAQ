@@ -13,6 +13,7 @@
 
 #include <fstream>
 #include "DRS4_fifo.h"
+#include "DRS4_writer.h"
 
 
 class DRS4_reader{
@@ -21,7 +22,7 @@ public:
   DRS4_reader(DRS4_fifo *const, DRS4_data::ChannelTimes *);
   ~DRS4_reader(); // close file
 
-  int run(const char *filename, std::vector<DRS4_data::BHEADER*>);
+  int run(const char *filename, std::vector<DRS4_data::BHEADER*>, DRS4_writer*);
   void stop() ;
   // Stop as soon as the fifo queue is empty
   void stopWhenEmpty() ;
