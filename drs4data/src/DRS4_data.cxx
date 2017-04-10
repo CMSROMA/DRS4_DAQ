@@ -10,6 +10,7 @@
 
 #include "DRS4_data.h"
 #include <chrono>
+#include <iostream>
 
 namespace DRS4_data {
 
@@ -94,6 +95,23 @@ namespace DRS4_data {
 
   }
 
+
+  ChannelData *const Event::getChData(int iboard, int ichan) const {
+
+    if ( iboard < 0 || iboard > chData.size() ) {
+      std::cout << "Event::getChData() WARNING: Requesting invalid board number "
+          << iboard << "." << std::endl;
+      return NULL;
+    }
+
+    if (ichan < 0 || ichan > chData.at(iboard).size()) {
+      std::cout << "Event::getChData() WARNING: Requesting invalid channel number "
+          << ichan << "." << std::endl;
+      return NULL;
+    }
+
+    return chData.at(iboard).at(ichan);
+  }
 
 
   int Event::write(std::ofstream *file) const {

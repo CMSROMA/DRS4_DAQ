@@ -11,14 +11,32 @@
 #include "math.h"
 #include "DRS4_writer.h"
 #include <iostream>
+#include <cassert>
+#include <cstdio>
 
 
 DRS4_writer::DRS4_writer(DRS *const _drs, DRS4_fifo *const _fifo,
-                         std::vector<int> _nChans) :
+    DRS4_data::ChannelTimes * chTimes, std::vector<int> _nChans) :
   drs(_drs), board(NULL), nChans(_nChans),
   fifo(_fifo), event(NULL), iEvent(0),
   internalThread(NULL), f_stop(false), f_isRunning(false)
 {
+
+  /*** Get time bins ***/
+  for (int iboard=0; iboard<drs->GetNumberOfBoards(); iboard++) {
+    DRSBoard *b = drs->GetBoard(iboard);
+    for (int ichan=0 ; ichan<4 ; ichan++) {
+      chTimes->at(iboard).at(ichan)->ch.c[0] = 'C';
+      // Format channel number in a c-string
+      char chnum[4];
+      snprintf(chnum, 4, "%03d", ichan);
+      // Copy char values
+      for (int ichar=0; ichar<3; ichar++)
+        chTimes->at(iboard).at(ichan)->ch.cn[ichar] = chnum[ichar];
+      // Get time bins
+      b->GetTime(0, ichan*2, b->GetTriggerCell(0), chTimes->at(iboard).at(ichan)->tbins);
+    }
+  }
 }
 
 
@@ -48,16 +66,45 @@ void DRS4_writer::stop() {
 
 void DRS4_writer::run( DRS4_writer* w, const unsigned nEvtMax) {
 
-  w->f_isRunning = true;
   std::cout << "Starting DRS4_writer.\n";
+
+  assert(w->drs!=NULL);
+  if ( w->drs->GetNumberOfBoards() < 1 ) {
+    std::cout << "DRS4_writer::run() ERROR: No boards present.\n";
+    w->f_isRunning = false;
+    return;
+  }
+
+  w->f_isRunning = true;
+
+  float dataBuffer[1024];
+
+
+
 
   while(!w->f_stop && w->iEvent<nEvtMax) {
 
     w->event = new DRS4_data::Event(w->iEvent, int(floor( (w->drs->GetBoard(0)->GetCalibratedInputRange())*1000 + 0.5)) );
 
+    /* start boards (activate domino wave), master is last */
+    for (int iboard=w->drs->GetNumberOfBoards()-1 ; iboard>=0 ; iboard--)
+      w->drs->GetBoard(iboard)->StartDomino();
+
+    std::cout << "DRS4_writer::run() Waiting for trigger." << std::endl;
+    while (w->drs->GetBoard(0)->IsBusy());
+
+    /*** Transfer and decode waveforms for all boards and channels ***/
+
     for (int iboard=0; iboard<w->drs->GetNumberOfBoards(); iboard++) {
 
-      // TODO: Acquire data here into event
+      DRSBoard *b = w->drs->GetBoard(iboard);
+
+      b->TransferWaves(0, 8);
+
+      for (int ichan=0 ; ichan<4 ; ichan++) {
+        /* decode waveform (Y) arrays in mV */
+        b->DecodeWave(0, ichan, w->event->getChData(iboard, ichan)->data);
+      } // Loop over the channels
 
     } // Loop over the boards
 

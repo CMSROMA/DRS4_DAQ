@@ -24,6 +24,7 @@ int main(int argc, char* argv[]) {
   unsigned nEvtMax = -1;
   if(argc > iarg) nEvtMax = atoi(argv[iarg]); iarg++;
 
+  DRS4_data::ChannelTimes *chTimes = new DRS4_data::ChannelTimes;
   DRS4_fifo *fifo = new DRS4_fifo;
 
   /* do initial scan */
@@ -55,7 +56,8 @@ int main(int argc, char* argv[]) {
      return 0;
   }
 
-  DRS4_writer writer(drs, fifo, nChansVec);
+
+  DRS4_writer writer(drs, fifo, chTimes, nChansVec);
 
   DRS4_reader reader(fifo);
 

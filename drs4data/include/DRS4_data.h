@@ -80,7 +80,7 @@ namespace DRS4_data {
   struct ChannelTime {
 
     CHEADER ch;
-    uint32_t tbins[1024];
+    float tbins[1024];
   };
 
 
@@ -107,6 +107,7 @@ namespace DRS4_data {
     void AddBoard(DRSBoard *);
 
     // Pointer to data to be stored
+    ChannelData *const getChData(int iboard, int ichan) const;
 //    void *Data() const { return dynamic_cast<void*>(&header); }
     // Size in bytes
   //  unsigned size() const ;
@@ -128,6 +129,9 @@ namespace DRS4_data {
     std::vector<std::vector<ChannelData*>> chData;
 
   };
+
+
+  typedef std::vector<std::vector<ChannelTime*>> ChannelTimes;
 
 } // namespace DRS4_data
 
