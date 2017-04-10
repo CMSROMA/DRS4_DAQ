@@ -16,15 +16,22 @@
 
 
 DRS4_writer::DRS4_writer(DRS *const _drs, DRS4_fifo *const _fifo,
-    DRS4_data::ChannelTimes * chTimes, std::vector<int> _nChans) :
-  drs(_drs), board(NULL), nChans(_nChans),
+    DRS4_data::ChannelTimes * chTimes, std::vector<DRS4_data::BHEADER*> bheaders) :
+  drs(_drs), board(NULL),
   fifo(_fifo), event(NULL), iEvent(0),
   internalThread(NULL), f_stop(false), f_isRunning(false)
 {
 
-  /*** Get time bins ***/
+  /*** Get board serial numbers and time bins ***/
   for (int iboard=0; iboard<drs->GetNumberOfBoards(); iboard++) {
+
     DRSBoard *b = drs->GetBoard(iboard);
+
+    // Board serial numbers
+    bheaders.at(iboard)->bn[0] = 'B';
+    bheaders.at(iboard)->bn[1] = '#';
+    bheaders.at(iboard)->board_serial_number = b->GetBoardSerialNumber();
+
     for (int ichan=0 ; ichan<4 ; ichan++) {
       chTimes->at(iboard).at(ichan)->ch.c[0] = 'C';
       // Format channel number in a c-string
@@ -77,7 +84,7 @@ void DRS4_writer::run( DRS4_writer* w, const unsigned nEvtMax) {
 
   w->f_isRunning = true;
 
-  float dataBuffer[1024];
+  float dataBuffer[DRS4_data::nChansDRS4];
 
 
 

@@ -24,6 +24,7 @@ int main(int argc, char* argv[]) {
   unsigned nEvtMax = -1;
   if(argc > iarg) nEvtMax = atoi(argv[iarg]); iarg++;
 
+  std::vector<DRS4_data::BHEADER*> bheaders; // Board serial numbers
   DRS4_data::ChannelTimes *chTimes = new DRS4_data::ChannelTimes;
   DRS4_fifo *fifo = new DRS4_fifo;
 
@@ -57,14 +58,14 @@ int main(int argc, char* argv[]) {
   }
 
 
-  DRS4_writer writer(drs, fifo, chTimes, nChansVec);
+  DRS4_writer writer(drs, fifo, chTimes, bheaders);
 
-  DRS4_reader reader(fifo);
+  DRS4_reader reader(fifo, chTimes);
 
   writer.start(1000);
   while (!writer.isRunning()) { std::this_thread::sleep_for(std::chrono::milliseconds(10)); };
 
-  int readerState = reader.run(datfilename.c_str());
+  int readerState = reader.run(datfilename.c_str(), bheaders);
   if ( readerState < 0 ) writer.stop();
 
 

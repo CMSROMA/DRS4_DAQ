@@ -18,6 +18,7 @@
 
 namespace DRS4_data {
 
+  static const unsigned nChansDRS4 = 1024;
 
   typedef struct {
      char           tag[3];
@@ -80,7 +81,7 @@ namespace DRS4_data {
   struct ChannelTime {
 
     CHEADER ch;
-    float tbins[1024];
+    float tbins[nChansDRS4];
   };
 
 
@@ -94,7 +95,7 @@ namespace DRS4_data {
 
     CHEADER ch;
     uint32_t scaler;
-    uint16_t data[1024];
+    uint16_t data[nChansDRS4];
   };
 
 
