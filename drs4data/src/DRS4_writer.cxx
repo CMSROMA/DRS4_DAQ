@@ -106,7 +106,7 @@ void DRS4_writer::run( DRS4_writer* w, const unsigned nEvtMax) {
 
   while(!w->f_stop && w->iEvent<nEvtMax) {
 
-    w->event = new DRS4_data::Event(w->iEvent, w->drs);
+    w->event = new DRS4_data::Event(w->iEvent+1, w->drs);
 
     /* start boards (activate domino wave), master is last */
     for (int iboard=w->drs->GetNumberOfBoards()-1 ; iboard>=0 ; iboard--)

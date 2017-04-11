@@ -146,12 +146,6 @@ namespace DRS4_data {
 
     unsigned getEvtNumber() const { return header.getSerialNumber(); }
 
-//    void *Data() const { return dynamic_cast<void*>(&header); }
-    // Size in bytes
-  //  unsigned size() const ;
-   // unsigned nChans() const { return nchans; }
-   // unsigned nBoards() const { return nboards; }
-
     int write(std::ofstream *) const ;
 
   private:
@@ -159,9 +153,6 @@ namespace DRS4_data {
     Event();
 
     void AddBoard(DRSBoard *);
-
-//    const unsigned nchans;
- //   const unsigned nboards;
 
     EHEADER header;
     std::vector<BHEADER*> bheaders;
