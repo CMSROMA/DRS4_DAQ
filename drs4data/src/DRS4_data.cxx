@@ -74,7 +74,7 @@ namespace DRS4_data {
   void setCHeader(CHEADER &ch, int ichan) {
     ch.c[0] = 'C';
     char chnum[4];
-    snprintf(chnum, 4, "%03d", ichan);
+    snprintf(chnum, 4, "%03d", ichan+1);
     // Copy char values
     for (int ichar=0; ichar<3; ichar++) {
       ch.cn[ichar] = chnum[ichar];
@@ -186,7 +186,7 @@ namespace DRS4_data {
 
       std::cout << "Storing data." << std::endl;
       for (unsigned ichan=0; ichan<chData.at(iboard).size(); ichan++) {
-        file->write( reinterpret_cast<const char*>(&(chData[iboard][ichan])), sizeof(ChannelData) );
+        file->write( reinterpret_cast<const char*>(chData.at(iboard).at(ichan)), sizeof(ChannelData) );
       } // loop over channels
 
     } // loop over boards
@@ -194,5 +194,34 @@ namespace DRS4_data {
     return 0;
   }
 
+
+
+  /*** Class BoardHeaders ***/
+
+  const THEADER DRSHeaders::theader = "TIME";
+
+  DRSHeaders::DRSHeaders(DRSHeaders& _headers) :
+    fheader(_headers.fheader), bheaders(_headers.bheaders), chTimes(_headers.chTimes)
+  {
+  }
+
+  DRSHeaders::DRSHeaders(const FHEADER _fheader, std::vector<BHEADER*> _bheaders,
+      ChannelTimes* _chTimes) :
+    fheader(_fheader), bheaders(_bheaders), chTimes(*_chTimes)
+  {
+  }
+
+  DRSHeaders::~DRSHeaders() {
+
+    for(int iboard=0; iboard<bheaders.size(); iboard++) {
+      delete bheaders.at(iboard);
+    }
+
+    for(int iboard=0; iboard<chTimes.size(); iboard++) {
+      for(int ichan=0; ichan<chTimes.at(iboard).size(); ichan++) {
+        delete chTimes.at(iboard).at(ichan);
+      }
+    }
+  }
 
 }

@@ -19,10 +19,10 @@
 class DRS4_reader{
 
 public:
-  DRS4_reader(DRS4_fifo *const, DRS4_data::ChannelTimes *);
+  DRS4_reader(DRS4_fifo *const, DRS4_data::DRSHeaders*);
   ~DRS4_reader(); // close file
 
-  int run(const char *filename, std::vector<DRS4_data::BHEADER*>, DRS4_writer*);
+  int run(const char *filename, DRS4_writer*);
   void stop() ;
   // Stop as soon as the fifo queue is empty
   void stopWhenEmpty() ;
@@ -33,7 +33,7 @@ private:
 
   DRS4_fifo *const fifo;
   DRS4_data::Event *event;
-  DRS4_data::ChannelTimes *chTimes;
+  DRS4_data::DRSHeaders *headers;
 
   std::ofstream *file;
 

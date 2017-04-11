@@ -12,14 +12,19 @@
 #include <iostream>
 #include <cassert>
 #include <cstdio>
+#include <cstring>
 
 
-DRS4_writer::DRS4_writer(DRS *const _drs, DRS4_fifo *const _fifo,
-    DRS4_data::ChannelTimes * chTimes, std::vector<DRS4_data::BHEADER*> &bheaders) :
+DRS4_writer::DRS4_writer(DRS *const _drs, DRS4_fifo *const _fifo, DRS4_data::DRSHeaders* &headers) :
   drs(_drs), board(NULL),
   fifo(_fifo), event(NULL), iEvent(0),
   internalThread(NULL), f_stop(false), f_isRunning(false), f_autoTrigger(false)
 {
+
+  // Objects for the initialization of the DRS headers
+  DRS4_data::FHEADER* fheader = new DRS4_data::FHEADER(drs->GetBoard(0)->GetDRSType());
+  std::vector<DRS4_data::BHEADER*> bheaders;
+  DRS4_data::ChannelTimes *chTimes = new DRS4_data::ChannelTimes;
 
   /*** Get board serial numbers and time bins ***/
   for (int iboard=0; iboard<drs->GetNumberOfBoards(); iboard++) {
@@ -43,7 +48,7 @@ DRS4_writer::DRS4_writer(DRS *const _drs, DRS4_fifo *const _fifo,
 
       DRS4_data::setCHeader(ct->ch, ichan);
       // Get time bins
-      b->GetTime(0, ichan*2, b->GetTriggerCell(0), ct->tbins);
+      b->GetTime(iboard, ichan*2, b->GetTriggerCell(iboard), ct->tbins);
 
       chTimeVec.push_back(ct);
     } // End loop over channels
@@ -51,6 +56,8 @@ DRS4_writer::DRS4_writer(DRS *const _drs, DRS4_fifo *const _fifo,
     chTimes->push_back(chTimeVec);
 
   } // End loop over boards
+
+  headers = new DRS4_data::DRSHeaders(*fheader, bheaders, chTimes);
 }
 
 

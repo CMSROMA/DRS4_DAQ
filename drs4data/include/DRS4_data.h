@@ -20,14 +20,22 @@ namespace DRS4_data {
 
   static const unsigned nChansDRS4 = 1024;
 
-  typedef struct {
+  typedef struct FHEADER {
+    FHEADER(const int v=4) {
+      strncpy(tag, "DRS", 3);
+      char btype[10];
+      sprintf(btype, "%d", v);
+      version = btype[0];
+    }
      char           tag[3];
      char           version;
   } FHEADER;
 
 
-  typedef struct {
-     char           time_header[4];
+  typedef struct THEADER{
+    THEADER() { strncpy(time_header, "TIME", 4); }
+    THEADER(const char* init) { strncpy(time_header, init, 4); }
+    char           time_header[4];
   } THEADER;
 
 
@@ -144,6 +152,20 @@ namespace DRS4_data {
 
 
   typedef std::vector<std::vector<ChannelTime*>> ChannelTimes;
+
+  class DRSHeaders {
+  // Class containing all data about the connected boards
+  // that are immutable during one run.
+  public:
+    DRSHeaders(DRSHeaders&);
+    DRSHeaders(const FHEADER, std::vector<BHEADER*>, ChannelTimes*);
+    ~DRSHeaders();
+
+    const FHEADER fheader;
+    static const THEADER theader;
+    const std::vector<BHEADER*> bheaders;
+    const ChannelTimes chTimes;
+  };
 
 } // namespace DRS4_data
 

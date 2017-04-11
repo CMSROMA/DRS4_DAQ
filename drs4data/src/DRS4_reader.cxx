@@ -13,8 +13,8 @@
 #include <thread>
 #include <iostream>
 
-DRS4_reader::DRS4_reader(DRS4_fifo *const _fifo, DRS4_data::ChannelTimes *_chTimes) :
-fifo(_fifo), event(NULL), chTimes(_chTimes), file(NULL),
+DRS4_reader::DRS4_reader(DRS4_fifo *const _fifo, DRS4_data::DRSHeaders* _headers) :
+fifo(_fifo), event(NULL), headers(_headers), file(NULL),
 f_stop(false), f_stopWhenEmpty(false)
 {
   std::cout << "DRS4_reader::DRS4_reader()." << std::endl;
@@ -37,8 +37,7 @@ void DRS4_reader::stopWhenEmpty() {
 }
 
 
-int DRS4_reader::run(const char *filename,
-    std::vector<DRS4_data::BHEADER*> bheaders, DRS4_writer *writer) {
+int DRS4_reader::run(const char *filename, DRS4_writer *writer) {
 
   file = new std::ofstream(filename, std::ios_base::binary & std::ios_base::trunc) ;
 
@@ -51,21 +50,20 @@ int DRS4_reader::run(const char *filename,
 
   /*** Write file header and time calibration ***/
 
-  file->write("DRS4", 4);
-  file->write("TIME", 4);
+  // Fixme: The version number should come from DRSBoard::GetDRSType()
+  file->write(reinterpret_cast<const char*>(&headers->fheader), 4);
+  file->write(reinterpret_cast<const char*>(&headers->theader), 4);
 
   std::cout << "Writing headers." << std::endl;
-  for(int iboard=0; iboard<chTimes->size(); iboard++) {
+  for(int iboard=0; iboard<headers->chTimes.size(); iboard++) {
     // Write board header
-    file->write(bheaders.at(iboard)->bn, 2);
-    file->write(reinterpret_cast<const char*>(&(bheaders.at(iboard)->board_serial_number)), 2);
+    file->write(headers->bheaders.at(iboard)->bn, 2);
+    file->write(reinterpret_cast<const char*>(&(headers->bheaders.at(iboard)->board_serial_number)), 2);
     // Write time calibration
-    for (int ichan=0; ichan<chTimes->at(iboard).size(); ichan++) {
-      file->write(chTimes->at(iboard).at(ichan)->ch.c, 1);
-      file->write(chTimes->at(iboard).at(ichan)->ch.cn, 3);
-      file->write(reinterpret_cast<const char*>(chTimes->at(iboard).at(ichan)->tbins), DRS4_data::nChansDRS4*sizeof(float));
+    for (int ichan=0; ichan<headers->chTimes.at(iboard).size(); ichan++) {
+      file->write(reinterpret_cast<const char*>(headers->chTimes.at(iboard).at(ichan)), sizeof(DRS4_data::ChannelTime) );
     }
-  }
+  } // End loop over boards
   std::cout << "Done writing headers." << std::endl;
 
 
