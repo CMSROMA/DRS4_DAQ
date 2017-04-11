@@ -71,18 +71,6 @@ namespace DRS4_data {
   }
 
 
-  void setCHeader(CHEADER &ch, int ichan) {
-    ch.c[0] = 'C';
-    char chnum[4];
-    snprintf(chnum, 4, "%03d", ichan+1);
-    // Copy char values
-    for (int ichar=0; ichar<3; ichar++) {
-      ch.cn[ichar] = chnum[ichar];
-    }
-  }
-
-
-
 
   /*** class Event ***/
 
@@ -124,23 +112,16 @@ namespace DRS4_data {
 
   void Event::AddBoard(DRSBoard * newboard) {
 
-    BHEADER *bhdr = new BHEADER;
-    bhdr->bn[0] = 'B';
-    bhdr->bn[1] = '#';
-    bhdr->board_serial_number = newboard->GetBoardSerialNumber();
+    BHEADER *bhdr = new BHEADER(newboard->GetBoardSerialNumber());
     bheaders.push_back(bhdr);
 
-    TCHEADER *tchdr = new TCHEADER;
-    tchdr->tc[0] = 'T';
-    tchdr->tc[1] = '#';
-    tchdr->trigger_cell = newboard->GetTriggerCell(0); // FIXME
+    TCHEADER *tchdr = new TCHEADER(newboard->GetTriggerCell(0)); // Fixme: Chip index?
     tcells.push_back(tchdr);
 
     std::vector<ChannelData*> channels;
 
     for (unsigned ichan=0; ichan < 4; ichan++) {
-      ChannelData* cd = new ChannelData;
-      setCHeader(cd->ch, ichan);
+      ChannelData* cd = new ChannelData(ichan+1);
       channels.push_back(cd);
     }
 
@@ -197,8 +178,6 @@ namespace DRS4_data {
 
 
   /*** Class BoardHeaders ***/
-
-  const THEADER DRSHeaders::theader = "TIME";
 
   DRSHeaders::DRSHeaders(DRSHeaders& _headers) :
     fheader(_headers.fheader), bheaders(_headers.bheaders), chTimes(_headers.chTimes)

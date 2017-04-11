@@ -52,7 +52,7 @@ int DRS4_reader::run(const char *filename, DRS4_writer *writer) {
 
   // Fixme: The version number should come from DRSBoard::GetDRSType()
   file->write(reinterpret_cast<const char*>(&headers->fheader), 4);
-  file->write(reinterpret_cast<const char*>(&headers->theader), 4);
+  file->write(reinterpret_cast<const char*>(&DRS4_data::THEADER), 4);
 
   std::cout << "Writing headers." << std::endl;
   for(int iboard=0; iboard<headers->chTimes.size(); iboard++) {

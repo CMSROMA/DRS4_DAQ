@@ -34,19 +34,14 @@ DRS4_writer::DRS4_writer(DRS *const _drs, DRS4_fifo *const _fifo, DRS4_data::DRS
     DRSBoard *b = drs->GetBoard(iboard);
 
     // Board serial numbers
-    DRS4_data::BHEADER *bhdr = new DRS4_data::BHEADER;
-    bhdr->bn[0] = 'B';
-    bhdr->bn[1] = '#';
-    bhdr->board_serial_number = b->GetBoardSerialNumber();
+    DRS4_data::BHEADER *bhdr = new DRS4_data::BHEADER(b->GetBoardSerialNumber());
     bheaders.push_back(bhdr);
 
     std::vector<DRS4_data::ChannelTime*> chTimeVec;
 
     for (int ichan=0 ; ichan<4 ; ichan++) {
 
-      DRS4_data::ChannelTime *ct = new DRS4_data::ChannelTime;
-
-      DRS4_data::setCHeader(ct->ch, ichan);
+      DRS4_data::ChannelTime *ct = new DRS4_data::ChannelTime(ichan+1);
       // Get time bins
       b->GetTime(iboard, ichan*2, b->GetTriggerCell(iboard), ct->tbins);
 

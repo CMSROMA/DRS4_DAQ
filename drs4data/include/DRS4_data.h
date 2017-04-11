@@ -20,29 +20,34 @@ namespace DRS4_data {
 
   static const unsigned nChansDRS4 = 1024;
 
-  typedef struct FHEADER {
+  struct HEADER {
+    HEADER(const char* init) { strncpy(header, init, 4); }
+    char header[4];
+  };
+
+  static const HEADER THEADER("TIME");
+
+  struct FHEADER {
     FHEADER(const int v=4) {
       strncpy(tag, "DRS", 3);
       char btype[10];
       sprintf(btype, "%d", v);
       version = btype[0];
     }
-     char           tag[3];
-     char           version;
-  } FHEADER;
+    char           tag[3];
+    char           version;
+  };
 
 
-  typedef struct THEADER{
-    THEADER() { strncpy(time_header, "TIME", 4); }
-    THEADER(const char* init) { strncpy(time_header, init, 4); }
-    char           time_header[4];
-  } THEADER;
-
-
-  typedef struct {
-     char           bn[2];
-     unsigned short board_serial_number;
-  } BHEADER;
+  struct BHEADER {
+    BHEADER (const unsigned short bsn) :
+      board_serial_number(bsn)
+    {
+      strncpy(bn, "B#", 2);
+    }
+    char           bn[2];
+    const unsigned short board_serial_number;
+  };
 
 
   class EHEADER{
@@ -71,18 +76,27 @@ namespace DRS4_data {
   };
 
 
-  typedef struct {
-     char           tc[2];
-     unsigned short trigger_cell;
-  } TCHEADER;
+  struct TCHEADER {
+    TCHEADER(const unsigned short tcell) :
+      trigger_cell(tcell)
+    {
+      strncpy(tc, "T#", 2);
+    }
+    char           tc[2];
+    const unsigned short trigger_cell;
+  } ;
 
 
-  typedef struct {
+  struct CHEADER {
+    CHEADER(const unsigned short cnum) {
+      c[0] = 'C';
+      char chnum[4];
+      snprintf(chnum, 4, "%03d", cnum);
+      strncpy(cn, chnum, 3);
+    }
      char           c[1];
      char           cn[3];
-  } CHEADER;
-
-  void setCHeader(CHEADER &ch, int ichan);
+  } ;
 
 
   /*******************************
@@ -91,7 +105,10 @@ namespace DRS4_data {
 
   struct ChannelTime {
 
-    CHEADER ch;
+    ChannelTime(const unsigned short chnum) :
+          ch(chnum) {}
+
+    const CHEADER ch;
     float tbins[nChansDRS4];
   };
 
@@ -104,7 +121,10 @@ namespace DRS4_data {
 
   struct ChannelData {
 
-    CHEADER ch;
+    ChannelData(const unsigned short chnum) :
+      ch(chnum), scaler(0) {}
+
+    const CHEADER ch;
     uint32_t scaler;
     uint16_t data[nChansDRS4];
   };
@@ -162,7 +182,6 @@ namespace DRS4_data {
     ~DRSHeaders();
 
     const FHEADER fheader;
-    static const THEADER theader;
     const std::vector<BHEADER*> bheaders;
     const ChannelTimes chTimes;
   };
