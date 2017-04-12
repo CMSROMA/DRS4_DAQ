@@ -24,31 +24,22 @@ ENDIF()
 
 MESSAGE( STATUS "OS: " ${DOS} )
 
-execute_process(COMMAND wx-config --libs OUTPUT_VARIABLE WXLIBS OUTPUT_STRIP_TRAILING_WHITESPACE)
-MESSAGE( STATUS "WXLIBS: " ${WXLIBS} )
-execute_process(COMMAND wx-config --cxxflags OUTPUT_VARIABLE WXFLAGS OUTPUT_STRIP_TRAILING_WHITESPACE)
-MESSAGE( STATUS "WXFLAGS: " ${WXFLAGS} )
-execute_process(COMMAND wx-config --prefix OUTPUT_VARIABLE WXPREFIX OUTPUT_STRIP_TRAILING_WHITESPACE)
-MESSAGE( STATUS "WXPREFIX: " ${WXPREFIX} )
-
-SET( CMAKE_C_FLAGS  "-D${DOS} -DHAVE_USB -DHAVE_LIBUSB10 -DUSE_DRS_MUTEX ${WXFLAGS} ${CMAKE_C_FLAGS}" )
-SET( CMAKE_CXX_FLAGS  "-w -ansi -pedantic -pthread -std=c++11 -D${DOS} -DHAVE_USB -DHAVE_LIBUSB10 -DUSE_DRS_MUTEX ${WXFLAGS} ${CMAKE_CXX_FLAGS}" )
-SET( CMAKE_EXE_LINKER_FLAGS  "${WXLIBS} ${CMAKE_EXE_LINKER_FLAGS}" )
-SET( CMAKE_SHARED_LINKER_FLAGS  "${WXLIBS} ${CMAKE_SHARED_LINKER_FLAGS}" )
-####################################################################################################
+### DEPENDENCIES ############################################################
 
 SET( CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmakemodules )
 
-### DEPENDENCIES ############################################################
-
 FIND_PACKAGE( DRS4 REQUIRED )
-MESSAGE( STATUS "DRS4_ROOT = " ${DRS4_ROOT} )
+FIND_PACKAGE( LIBUSB10 REQUIRED )
+FIND_PACKAGE( WXWidgets REQUIRED )
+
+SET( CMAKE_C_FLAGS  "-D${DOS} -DHAVE_USB -DHAVE_LIBUSB10 -DUSE_DRS_MUTEX ${WXFLAGS} ${CMAKE_C_FLAGS}" )
+SET( CMAKE_CXX_FLAGS  "-w -ansi -pedantic -pthread -std=c++11 -D${DOS} -DHAVE_USB -DHAVE_LIBUSB10 -DUSE_DRS_MUTEX ${WXFLAGS} ${CMAKE_CXX_FLAGS}" )
+####################################################################################################
 
 ### SUBDIRECTORIES #####################################
 
 add_subdirectory (drs4data)
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
-MESSAGE( STATUS "CMAKE_INSTALL_RPATH: " ${CMAKE_INSTALL_RPATH} )
 add_subdirectory (drs4)
 add_subdirectory (drs4daq)
 

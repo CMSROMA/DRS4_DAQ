@@ -8,7 +8,7 @@ add_library (drs4 SHARED ${DRS4_ROOT}/src/DRS.cpp
                          )
 
 target_include_directories(drs4 PUBLIC ${DRS4_INCLUDE_DIRS} )
-target_link_libraries ( drs4 PRIVATE wx_gtk2u_core-3.0 usb-1.0 )
+target_link_libraries ( drs4 PRIVATE ${WXCORE_LIB} ${LIBUSB10_LIB} )
 
 install( TARGETS drs4 LIBRARY DESTINATION lib )
 

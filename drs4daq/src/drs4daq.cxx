@@ -128,7 +128,7 @@ int main(int argc, char* argv[]) {
   DRS4_reader reader(fifo, headers);
 
   // Start DAQ
-  writer.setAutoTrigger();
+ // writer.setAutoTrigger();
   writer.start(nEvtMax);
   while (!writer.isRunning()) { std::this_thread::sleep_for(std::chrono::milliseconds(10)); };
 

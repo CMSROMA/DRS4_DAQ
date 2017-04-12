@@ -70,7 +70,7 @@ int DRS4_reader::run(const char *filename, DRS4_writer *writer) {
   while(!f_stop) {
 
     event = fifo->read();
-    std::cout << "Read event." << std::endl;
+//    std::cout << "Read event." << std::endl;
 
     if(event) {
       std::cout << "Read event #" << event->getEvtNumber() << std::endl;
