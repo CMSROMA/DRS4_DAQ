@@ -20,7 +20,7 @@
 class DRS4_writer {
 
 public:
-  DRS4_writer(DRS *const, DRS4_fifo *const, DRS4_data::DRSHeaders*&);
+  DRS4_writer(DRS *const, DRS4_data::DRS4_fifo *const);
   ~DRS4_writer();
 
   void start(const unsigned _nEvtMax = -1);
@@ -39,8 +39,8 @@ private:
   DRS *drs;
   DRSBoard *board;
 
-  DRS4_fifo *const fifo;
-  DRS4_data::Event *event;
+  DRS4_data::DRS4_fifo *const fifo;
+  DRS4_data::RawEvent *event;
 
   // Event counter
   unsigned iEvent;

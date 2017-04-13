@@ -26,6 +26,17 @@ namespace DRS4_data {
 
   }
 
+
+  EHEADER::EHEADER(const EHEADER &eh) :
+    event_header({'E', 'H', 'D', 'R'}),
+    event_serial_number(eh.getSerialNumber()),
+    year(eh.getYear()), month(eh.getMonth()), day(eh.getDay()),
+    hour(eh.getHour()), minute(eh.getMinute()), second(eh.getSecond()),
+    millisecond(eh.getMillisecond()), range(eh.getRange())
+  {
+
+  }
+
   void EHEADER::setTimeStamp() {
 
     using namespace std::chrono;
@@ -84,6 +95,15 @@ namespace DRS4_data {
       AddBoard(drs->GetBoard(iboard));
     }
 
+  }
+
+
+  Event::Event(const unsigned iEvt, const EHEADER _header, DRS *drs) :
+    header(_header)
+  {
+    for( unsigned iboard=0; iboard<drs->GetNumberOfBoards(); iboard++) {
+      AddBoard(drs->GetBoard(iboard));
+    }
   }
 
 

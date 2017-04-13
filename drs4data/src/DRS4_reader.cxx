@@ -13,11 +13,45 @@
 #include <thread>
 #include <iostream>
 
-DRS4_reader::DRS4_reader(DRS4_fifo *const _fifo, DRS4_data::DRSHeaders* _headers) :
-fifo(_fifo), event(NULL), headers(_headers), file(NULL),
-f_stop(false), f_stopWhenEmpty(false)
+DRS4_reader::DRS4_reader(DRS4_data::DRS4_fifo *const _fifo, DRS* _drs) :
+  drs(_drs), fifo(_fifo), rawWave(NULL), event(NULL),
+  headers(NULL), file(NULL),
+  f_stop(false), f_stopWhenEmpty(false)
 {
   std::cout << "DRS4_reader::DRS4_reader()." << std::endl;
+
+  // Objects for the initialization of the DRS headers
+  DRS4_data::FHEADER fheader(drs->GetBoard(0)->GetDRSType());
+  std::vector<DRS4_data::BHEADER*> bheaders;
+  DRS4_data::ChannelTimes *chTimes = new DRS4_data::ChannelTimes;
+
+  /*** Get board serial numbers and time bins ***/
+  for (int iboard=0; iboard<drs->GetNumberOfBoards(); iboard++) {
+
+    std::cout << "DRS4_reader::DRS4_reader() - Reading board #" << iboard << std::endl;
+
+    DRSBoard *b = drs->GetBoard(iboard);
+
+    // Board serial numbers
+    DRS4_data::BHEADER *bhdr = new DRS4_data::BHEADER(b->GetBoardSerialNumber());
+    bheaders.push_back(bhdr);
+
+    std::vector<DRS4_data::ChannelTime*> chTimeVec;
+
+    for (int ichan=0 ; ichan<4 ; ichan++) {
+
+      DRS4_data::ChannelTime *ct = new DRS4_data::ChannelTime(ichan+1);
+      // Get time bins
+      b->GetTime(iboard, ichan*2, b->GetTriggerCell(iboard), ct->tbins);
+
+      chTimeVec.push_back(ct);
+    } // End loop over channels
+
+    chTimes->push_back(chTimeVec);
+
+  } // End loop over boards
+
+  headers = new DRS4_data::DRSHeaders(fheader, bheaders, chTimes);
 }
 
 DRS4_reader::~DRS4_reader() {
@@ -49,12 +83,11 @@ int DRS4_reader::run(const char *filename, DRS4_writer *writer) {
   std::cout << "Starting DRS4_reader.\n";
 
   /*** Write file header and time calibration ***/
+  std::cout << "Writing headers and time calibration." << std::endl;
 
-  // Fixme: The version number should come from DRSBoard::GetDRSType()
   file->write(reinterpret_cast<const char*>(&headers->fheader), 4);
   file->write(reinterpret_cast<const char*>(&DRS4_data::THEADER), 4);
 
-  std::cout << "Writing headers." << std::endl;
   for(int iboard=0; iboard<headers->chTimes.size(); iboard++) {
     // Write board header
     file->write(headers->bheaders.at(iboard)->bn, 2);
@@ -66,14 +99,25 @@ int DRS4_reader::run(const char *filename, DRS4_writer *writer) {
   } // End loop over boards
   std::cout << "Done writing headers." << std::endl;
 
-
   while(!f_stop) {
 
-    event = fifo->read();
+    rawWave = fifo->read();
 //    std::cout << "Read event." << std::endl;
 
-    if(event) {
-      std::cout << "Read event #" << event->getEvtNumber() << std::endl;
+    if(rawWave) {
+      unsigned iEvt = rawWave->header.getSerialNumber();
+      std::cout << "Read event #" << iEvt << std::endl;
+      event = new DRS4_data::Event(iEvt, rawWave->header, drs);
+
+      for(int iboard=0; iboard<headers->chTimes.size(); iboard++) {
+        DRSBoard *b = drs->GetBoard(iboard);
+        for (int ichan=0 ; ichan<4 ; ichan++) {
+          /* decode waveform (Y) arrays in mV */
+          std::cout << "Decoding waveform in chan #" << ichan << std::endl;
+          b->DecodeWave(0, ichan, event->getChData(iboard, ichan)->data);
+        } // Loop over the channels
+
+      }
       event->write(file);
       processEvent();
       delete event;

@@ -53,12 +53,21 @@ namespace DRS4_data {
   class EHEADER{
   public:
     EHEADER();
+    EHEADER(const EHEADER &);
 
     void setEvtNumber(unsigned evtnum) { event_serial_number = evtnum; }
     void setTimeStamp();
     void setRange(unsigned short _range) { range = _range; }
 
-    unsigned getSerialNumber() const { return event_serial_number; }
+    unsigned getSerialNumber()  const { return event_serial_number; }
+    unsigned getYear()          const { return year; }
+    unsigned getMonth()         const { return month; }
+    unsigned getDay()           const { return day; }
+    unsigned getHour()          const { return hour; }
+    unsigned getMinute()        const { return minute; }
+    unsigned getSecond()        const { return second; }
+    unsigned getMillisecond()   const { return millisecond; }
+    unsigned getRange()         const { return range; }
 
     int write(std::ofstream*) const;
 
@@ -134,6 +143,7 @@ namespace DRS4_data {
 
   public:
     Event(const unsigned iEvt, DRS*);
+    Event(const unsigned iEvt, const EHEADER, DRS*);
     ~Event();
 
     // Pointer to data to be stored

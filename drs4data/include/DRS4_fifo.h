@@ -8,26 +8,51 @@
 #ifndef DRS4DATA_INCLUDE_DRS4_FIFO_H_
 #define DRS4DATA_INCLUDE_DRS4_FIFO_H_
 
-#include <queue>
-
 #include "DRS4_data.h"
+#include <queue>
+#include <vector>
 
 
-class DRS4_fifo {
+namespace DRS4_data {
 
-public:
-  DRS4_fifo();
+  struct Waveforms {
+    Waveforms() :
+      waveforms(new (std::nothrow) unsigned char [kNumberOfChipsMax * kNumberOfChannelsMax * 2 * kNumberOfBins])
+    { }
+/*    Waveforms::Waveforms(unsigned nChips=1, unsigned nChannels=8) :
+      waveforms(new (std::nothrow) unsigned char [nChips * nChannels * 2 * kNumberOfBins])
+    { }*/
+    ~Waveforms() {
+      delete [] waveforms;
+    }
+    unsigned char *waveforms;
+  } ;
 
-  // returns the pointer. The pointer is popped from the queue.
-  // The caller is responsible for freeing the memory.
-  // If the queue is empty, returns null pointer.
-  DRS4_data::Event* read() ;
-  // Reserve memory and push the pointer
-  int write(DRS4_data::Event *) ;
 
-private:
-  std::queue<DRS4_data::Event*> events;
-};
+  struct RawEvent {
+    std::vector<Waveforms*> eventWaves;
+    EHEADER header;
+  };
 
+
+  class DRS4_fifo {
+
+  public:
+    DRS4_fifo();
+
+    // Returns the pointer to RawEvent object. The pointer is popped from the queue.
+    // The caller is responsible for freeing the memory (deleting the pointer).
+    // If the queue is empty, returns null pointer.
+    RawEvent* read() ;
+    // Push the pointer. The caller should have already reserved the memory.
+    int write(RawEvent*) ;
+
+
+  private:
+    std::queue<RawEvent*> eventWaves;
+
+  };
+
+} // namespace DRS4_data
 
 #endif /* DRS4DATA_INCLUDE_DRS4_FIFO_H_ */

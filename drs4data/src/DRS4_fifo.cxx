@@ -4,25 +4,30 @@
  * Implementation of class DRS4_fifo
  ***************************/
 
+#include <queue>
+#include <vector>
 #include "DRS4_fifo.h"
 
-DRS4_fifo::DRS4_fifo() {
+namespace DRS4_data {
 
-}
+  DRS4_fifo::DRS4_fifo() {
 
-// returns the pointer. The pointer is popped from the list.
-// The caller is responsible of freeing the memory.
-DRS4_data::Event* DRS4_fifo::read() {
+  }
 
-  if (events.empty()) return NULL;
-  DRS4_data::Event *p = events.front();
-  events.pop();
-  return p;
-}
+  // returns the pointer. The pointer is popped from the list.
+  // The caller is responsible of freeing the memory.
+  RawEvent* DRS4_fifo::read() {
 
-// Reserve memory and push the pointer
-int DRS4_fifo::write(DRS4_data::Event * evt) {
-  events.push(evt);
-  return 0;
-}
+    if (eventWaves.empty()) return NULL;
+    RawEvent *pt = eventWaves.front();
+    eventWaves.pop();
+    return pt;
+  }
 
+  // Push the pointer. The caller should have already reserved the memory.
+  int DRS4_fifo::write(RawEvent * pt) {
+    eventWaves.push(pt);
+    return 0;
+  }
+
+} // namespace DRS4_data

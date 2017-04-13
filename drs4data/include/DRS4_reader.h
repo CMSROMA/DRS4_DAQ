@@ -19,7 +19,7 @@
 class DRS4_reader{
 
 public:
-  DRS4_reader(DRS4_fifo *const, DRS4_data::DRSHeaders*);
+  DRS4_reader(DRS4_data::DRS4_fifo *const, DRS *);
   ~DRS4_reader(); // close file
 
   int run(const char *filename, DRS4_writer*);
@@ -31,7 +31,10 @@ private:
 
   DRS4_reader();
 
-  DRS4_fifo *const fifo;
+  DRS *drs;
+
+  DRS4_data::DRS4_fifo *const fifo;
+  DRS4_data::RawEvent *rawWave;
   DRS4_data::Event *event;
   DRS4_data::DRSHeaders *headers;
 

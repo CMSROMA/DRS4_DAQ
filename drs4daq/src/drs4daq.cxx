@@ -48,7 +48,7 @@ int main(int argc, char* argv[]) {
   if(argc > iarg) nEvtMax = atoi(argv[iarg]); iarg++;
 
   DRS4_data::DRSHeaders *headers = NULL;
-  DRS4_fifo *fifo = new DRS4_fifo;
+  DRS4_data::DRS4_fifo *fifo = new DRS4_data::DRS4_fifo;
 
   /* Examine command-line input for requested number(s) of channels */
   std::vector<int> nChansVec;
@@ -120,12 +120,12 @@ int main(int argc, char* argv[]) {
   /*** Writer and reader ***/
 
   std::cout << "Constructing writer." << std::endl;
-  DRS4_writer writer(drs, fifo, headers);
+  DRS4_writer writer(drs, fifo);
   // Fixme: Why not design the writer as disposable (lifetime = one run)?
   // Pro: Safer for the internal thread
 
   std::cout << "Constructing reader." << std::endl;
-  DRS4_reader reader(fifo, headers);
+  DRS4_reader reader(fifo, drs);
 
   // Start DAQ
   writer.setAutoTrigger();
