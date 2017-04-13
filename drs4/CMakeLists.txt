@@ -8,7 +8,7 @@ add_library (drs4 SHARED ${DRS4_ROOT}/src/DRS.cpp
                          )
 
 target_include_directories(drs4 PUBLIC ${DRS4_INCLUDE_DIRS} )
-target_link_libraries ( drs4 PRIVATE ${WXCORE_LIB} ${LIBUSB10_LIB} )
+target_link_libraries ( drs4 PUBLIC ${WXLIBS} ${LIBUSB10_LIB} )
 
 install( TARGETS drs4 LIBRARY DESTINATION lib )
 
