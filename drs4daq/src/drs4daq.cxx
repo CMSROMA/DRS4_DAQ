@@ -97,16 +97,21 @@ int main(int argc, char* argv[]) {
     /* First: External LEMO/FP/TRBUS trigger
      * Second: analog threshold (internal) trigger
      */
-    std::cout << "Setting input range." << std::endl;
+    std::cout << "Setting trigger mode." << std::endl;
+    // (1, 0) = "fast trigger", "analog trigger"
+    // Board types 8, 9 always need (1, 0)
+    // other board types take (1, 0) for external and (0, 1) for internal trigger.
     b->EnableTrigger(1, 0);
+
+   // b->
 
     if (iboard == 0) {
       /* master board: enable hardware trigger on CH1 at 50 mV positive edge */
       std::cout << "Configuring master board." << std::endl;
       b->SetTranspMode(1);
       b->SetTriggerSource(1<<0);        // set CH1 as source
-      b->SetTriggerLevel(-0.05);        // -50 mV
-      b->SetTriggerPolarity(true);      // negative edge
+      b->SetTriggerLevel(0.05);        // -50 mV
+      b->SetTriggerPolarity(false);      // negative edge
       b->SetTriggerDelayNs(150);          // Trigger delay shifts waveform left
     } else {
       /* slave boards: enable hardware trigger on Trigger IN */
@@ -128,7 +133,9 @@ int main(int argc, char* argv[]) {
   DRS4_reader reader(fifo, drs);
 
   // Start DAQ
-  //writer.setAutoTrigger();
+  mb->EnableTcal(5);
+  mb->SelectClockSource(0);
+ // writer.setAutoTrigger();
   writer.start(nEvtMax);
   while (!writer.isRunning()) { std::this_thread::sleep_for(std::chrono::milliseconds(10)); };
 

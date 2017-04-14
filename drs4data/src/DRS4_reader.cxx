@@ -15,6 +15,7 @@
 
 #include "TCanvas.h"
 #include "TGraph.h"
+#include "TH1F.h"
 
 DRS4_reader::DRS4_reader(DRS4_data::DRS4_fifo *const _fifo, DRS* _drs) :
   drs(_drs), fifo(_fifo), rawWave(NULL), event(NULL),
@@ -108,11 +109,14 @@ int DRS4_reader::run(const char *filename, DRS4_writer *writer) {
 
   TGraph *g;
 
-  int rawx[kNumberOfChipsMax * kNumberOfChannelsMax * kNumberOfBins];
-  for(int i=0; i<kNumberOfChipsMax * kNumberOfChannelsMax * kNumberOfBins; i++) {
-    rawx[i] = i;
-  }
-
+  // Time calibrations
+  const bool tCalibrated = true; // Whether time points should come calibrated
+  const bool tRotated = true;    // Whether time points should come rotated
+  // Voltage calibrations
+  const bool applyResponseCalib = true;  // Remove noise and offset variations
+  const bool adjustToClock = false;       // What does this do ???
+  const bool adjustToClockForFile = false;
+  const bool applyOffsetCalib = false;   // ?
 
   while(!f_stop) {
 
@@ -124,24 +128,12 @@ int DRS4_reader::run(const char *filename, DRS4_writer *writer) {
       std::cout << "Trigger cell is " << rawWave->header.getTriggerCell() << std::endl;
       event = new DRS4_data::Event(iEvt, rawWave->header, drs);
 
-      c.Clear();
-      c.Divide(1,2);
-
-          /* Raw waveform */
-      int raw[kNumberOfChipsMax * kNumberOfChannelsMax * kNumberOfBins];
+      /* Raw waveform */
+/*      int raw[kNumberOfChipsMax * kNumberOfChannelsMax * kNumberOfBins];
       for (int i=0; i<kNumberOfChipsMax * kNumberOfChannelsMax * kNumberOfBins; i++) {
         raw[i] = ((rawWave->eventWaves.at(0)->waveforms[i * 2 + 1 ] & 0xff) << 8)
                +  rawWave->eventWaves.at(0)->waveforms[i * 2 ];
-      }
-      TGraph gRaw(1 * kNumberOfChannelsMax * kNumberOfBins, rawx, raw);
-      gRaw.Draw("AL");
-      if(firstpage) {
-        c.Print("test.pdf(");
-        firstpage = false;
-      }
-      else c.Print("test.pdf");
-      c.Clear();
-      c.Divide(2,2);
+      }*/
 
       for(int iboard=0; iboard<headers->chTimes.size(); iboard++) {
         DRSBoard *b = drs->GetBoard(iboard);
@@ -151,18 +143,32 @@ int DRS4_reader::run(const char *filename, DRS4_writer *writer) {
           /* decode waveform (Y) arrays in mV */
           std::cout << "Decoding waveform in chan #" << int(ichan)+1 << std::endl;
           b->GetWave(rawWave->eventWaves.at(iboard)->waveforms, 0, ichan*2, (short*)event->getChData(iboard, ichan)->data,
-              true, int(rawWave->header.getTriggerCell()), -1, true);
+              applyResponseCalib, int(rawWave->header.getTriggerCell()), -1, adjustToClockForFile, 0, applyOffsetCalib);
 
           float time[kNumberOfBins];
-          b->GetTime(0, ichan*2, int(rawWave->header.getTriggerCell()), time, true, true);
+          b->GetTime(0, ichan*2, int(rawWave->header.getTriggerCell()), time, tCalibrated, tRotated);
           float amplitude[kNumberOfBins];
-          b->GetWave(rawWave->eventWaves.at(iboard)->waveforms, 0, ichan*2, amplitude,
-              true, int(rawWave->header.getTriggerCell()), -1, false, 0, true);
 //          b->GetWave(rawWave->eventWaves.at(iboard)->waveforms, 0, ichan*2, amplitude,
-  //            true, b->GetTriggerCell(rawWave->eventWaves.at(iboard)->waveforms, 0), -1, false, 0, true);
+  //            applyResponseCalib, int(rawWave->header.getTriggerCell()), -1, adjustToClock, 0, applyOffsetCalib);
+          b->GetWave(rawWave->eventWaves.at(iboard)->waveforms, 0, ichan*2, amplitude, applyResponseCalib,
+              b->GetTriggerCell(rawWave->eventWaves.at(iboard)->waveforms, 0), -1, adjustToClock, 0, applyOffsetCalib);
           c.cd(int(ichan)+1);
-          TGraph gr(kNumberOfBins, time, amplitude);
-          gr.DrawGraph(kNumberOfBins, time, amplitude, "AL");
+ //         TFrame *frm = new TFrame(0, -600, 50, 600);
+          TGraph *gr = new TGraph(kNumberOfBins, time, amplitude);
+//          gPad->SetGridx(5);
+  //        TGraph *gr = new TGraph(51, time, amplitude);
+    /*      double x, y;
+          gr->GetPoint(0, x, y);
+          std::cout << "Time(0) = " << x << ", y(0) = " << y << std::endl;
+          gr->GetPoint(50, x, y);
+          std::cout << "Time(50) = " << x << ", y(50) = " << y <<  std::endl;*/
+   //       frm->Draw("");
+          gr->SetMarkerStyle(8);
+          gr->GetHistogram()->SetMinimum(-600);
+          gr->GetHistogram()->SetMaximum(600);
+     /*     gr->GetHistogram()->GetXaxis()->SetNdivisions(20, 2, 0, kFALSE);*/
+          gr->GetHistogram()->GetXaxis()->SetRangeUser(0, 200.000);
+          gr->Draw("AL");
         } // Loop over the channels
 
         if(firstpage) {
