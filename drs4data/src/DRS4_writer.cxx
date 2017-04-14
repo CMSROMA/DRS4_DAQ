@@ -93,7 +93,6 @@ void DRS4_writer::run( DRS4_writer* w, const unsigned nEvtMax) {
     while (w->drs->GetBoard(0)->IsBusy());
 
     w->event->header.setTimeStamp();
-    w->event->header.setTriggerCell( w->drs->GetBoard(0)->GetTriggerCell(0) );
 
     /*** Transfer waveforms for all boards ***/
     std::cout << "DRS4_writer::run() - Transferring waves." << std::endl;
@@ -105,6 +104,7 @@ void DRS4_writer::run( DRS4_writer* w, const unsigned nEvtMax) {
       DRS4_data::Waveforms *wf = new DRS4_data::Waveforms;
 
       b->TransferWaves(wf->waveforms, 0, 8);
+      w->event->header.setTriggerCell( w->drs->GetBoard(0)->GetTriggerCell(0) );
 
       w->event->eventWaves.push_back(wf);
 

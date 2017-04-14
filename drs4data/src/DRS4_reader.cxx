@@ -108,6 +108,12 @@ int DRS4_reader::run(const char *filename, DRS4_writer *writer) {
 
   TGraph *g;
 
+  int rawx[kNumberOfChipsMax * kNumberOfChannelsMax * kNumberOfBins];
+  for(int i=0; i<kNumberOfChipsMax * kNumberOfChannelsMax * kNumberOfBins; i++) {
+    rawx[i] = i;
+  }
+
+
   while(!f_stop) {
 
     rawWave = fifo->read();
@@ -118,19 +124,42 @@ int DRS4_reader::run(const char *filename, DRS4_writer *writer) {
       std::cout << "Trigger cell is " << rawWave->header.getTriggerCell() << std::endl;
       event = new DRS4_data::Event(iEvt, rawWave->header, drs);
 
+      c.Clear();
+      c.Divide(1,2);
+
+          /* Raw waveform */
+      int raw[kNumberOfChipsMax * kNumberOfChannelsMax * kNumberOfBins];
+      for (int i=0; i<kNumberOfChipsMax * kNumberOfChannelsMax * kNumberOfBins; i++) {
+        raw[i] = ((rawWave->eventWaves.at(0)->waveforms[i * 2 + 1 ] & 0xff) << 8)
+               +  rawWave->eventWaves.at(0)->waveforms[i * 2 ];
+      }
+      TGraph gRaw(1 * kNumberOfChannelsMax * kNumberOfBins, rawx, raw);
+      gRaw.Draw("AL");
+      if(firstpage) {
+        c.Print("test.pdf(");
+        firstpage = false;
+      }
+      else c.Print("test.pdf");
+      c.Clear();
+      c.Divide(2,2);
+
       for(int iboard=0; iboard<headers->chTimes.size(); iboard++) {
         DRSBoard *b = drs->GetBoard(iboard);
         for (unsigned char ichan=0 ; ichan<4 ; ichan++) {
 
+
           /* decode waveform (Y) arrays in mV */
-          std::cout << "Decoding waveform in chan #" << int(ichan) << std::endl;
-          b->GetWave(rawWave->eventWaves.at(iboard)->waveforms, 0, ichan, (short*)event->getChData(iboard, ichan)->data,
-              false, int(rawWave->header.getTriggerCell()), -1, true);
+          std::cout << "Decoding waveform in chan #" << int(ichan)+1 << std::endl;
+          b->GetWave(rawWave->eventWaves.at(iboard)->waveforms, 0, ichan*2, (short*)event->getChData(iboard, ichan)->data,
+              true, int(rawWave->header.getTriggerCell()), -1, true);
+
           float time[kNumberOfBins];
-          b->GetTime(0, ichan, int(rawWave->header.getTriggerCell()), time, true, true);
+          b->GetTime(0, ichan*2, int(rawWave->header.getTriggerCell()), time, true, true);
           float amplitude[kNumberOfBins];
-          b->GetWave(rawWave->eventWaves.at(iboard)->waveforms, 0, ichan, amplitude,
-              false, int(rawWave->header.getTriggerCell()), -1, true);
+          b->GetWave(rawWave->eventWaves.at(iboard)->waveforms, 0, ichan*2, amplitude,
+              true, int(rawWave->header.getTriggerCell()), -1, false, 0, true);
+//          b->GetWave(rawWave->eventWaves.at(iboard)->waveforms, 0, ichan*2, amplitude,
+  //            true, b->GetTriggerCell(rawWave->eventWaves.at(iboard)->waveforms, 0), -1, false, 0, true);
           c.cd(int(ichan)+1);
           TGraph gr(kNumberOfBins, time, amplitude);
           gr.DrawGraph(kNumberOfBins, time, amplitude, "AL");

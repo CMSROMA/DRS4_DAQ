@@ -107,7 +107,7 @@ int main(int argc, char* argv[]) {
       b->SetTriggerSource(1<<0);        // set CH1 as source
       b->SetTriggerLevel(-0.05);        // -50 mV
       b->SetTriggerPolarity(true);      // negative edge
-      b->SetTriggerDelayNs(0);          // zero ns trigger delay
+      b->SetTriggerDelayNs(150);          // Trigger delay shifts waveform left
     } else {
       /* slave boards: enable hardware trigger on Trigger IN */
       std::cout << "Configuring slave board." << std::endl;
@@ -128,7 +128,7 @@ int main(int argc, char* argv[]) {
   DRS4_reader reader(fifo, drs);
 
   // Start DAQ
-  writer.setAutoTrigger();
+  //writer.setAutoTrigger();
   writer.start(nEvtMax);
   while (!writer.isRunning()) { std::this_thread::sleep_for(std::chrono::milliseconds(10)); };
 
