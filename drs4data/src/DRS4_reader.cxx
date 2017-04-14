@@ -13,6 +13,9 @@
 #include <thread>
 #include <iostream>
 
+#include "TCanvas.h"
+#include "TGraph.h"
+
 DRS4_reader::DRS4_reader(DRS4_data::DRS4_fifo *const _fifo, DRS* _drs) :
   drs(_drs), fifo(_fifo), rawWave(NULL), event(NULL),
   headers(NULL), file(NULL),
@@ -99,23 +102,47 @@ int DRS4_reader::run(const char *filename, DRS4_writer *writer) {
   } // End loop over boards
   std::cout << "Done writing headers." << std::endl;
 
+  TCanvas c("wf", "Waveforms", 1600, 1200);
+  c.Divide(2,2);
+  bool firstpage=true;
+
+  TGraph *g;
+
   while(!f_stop) {
 
     rawWave = fifo->read();
-//    std::cout << "Read event." << std::endl;
 
     if(rawWave) {
-      unsigned iEvt = rawWave->header.getSerialNumber();
+      unsigned iEvt = rawWave->header.getEventNumber();
       std::cout << "Read event #" << iEvt << std::endl;
+      std::cout << "Trigger cell is " << rawWave->header.getTriggerCell() << std::endl;
       event = new DRS4_data::Event(iEvt, rawWave->header, drs);
 
       for(int iboard=0; iboard<headers->chTimes.size(); iboard++) {
         DRSBoard *b = drs->GetBoard(iboard);
-        for (int ichan=0 ; ichan<4 ; ichan++) {
+        for (unsigned char ichan=0 ; ichan<4 ; ichan++) {
+
           /* decode waveform (Y) arrays in mV */
-          std::cout << "Decoding waveform in chan #" << ichan << std::endl;
-          b->DecodeWave(rawWave->eventWaves.at(iboard)->waveforms, 0, ichan, event->getChData(iboard, ichan)->data);
+          std::cout << "Decoding waveform in chan #" << int(ichan) << std::endl;
+          b->GetWave(rawWave->eventWaves.at(iboard)->waveforms, 0, ichan, (short*)event->getChData(iboard, ichan)->data,
+              false, int(rawWave->header.getTriggerCell()), -1, true);
+          float time[kNumberOfBins];
+          b->GetTime(0, ichan, int(rawWave->header.getTriggerCell()), time, true, true);
+          float amplitude[kNumberOfBins];
+          b->GetWave(rawWave->eventWaves.at(iboard)->waveforms, 0, ichan, amplitude,
+              false, int(rawWave->header.getTriggerCell()), -1, true);
+          c.cd(int(ichan)+1);
+          TGraph gr(kNumberOfBins, time, amplitude);
+          gr.DrawGraph(kNumberOfBins, time, amplitude, "AL");
         } // Loop over the channels
+
+        if(firstpage) {
+          c.Print("test.pdf(");
+          firstpage = false;
+        }
+        else c.Print("test.pdf");
+
+        c.Clear("D");
 
       }
       event->write(file);
@@ -131,6 +158,8 @@ int DRS4_reader::run(const char *filename, DRS4_writer *writer) {
       } // if(f_stopWhenEmpty)
     } // if(event)
   } // !f_stop
+
+  c.Print("test.pdf)");
 
   return 0;
 }

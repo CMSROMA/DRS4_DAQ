@@ -21,7 +21,7 @@ namespace DRS4_data {
     event_header({'E', 'H', 'D', 'R'}),
     event_serial_number(0),
     year(2017), month(0), day(0), hour(0), minute(0), second(0), millisecond(0),
-    range(0)
+    range(0), bheader(0), tcheader(-1)
   {
 
   }
@@ -29,10 +29,11 @@ namespace DRS4_data {
 
   EHEADER::EHEADER(const EHEADER &eh) :
     event_header({'E', 'H', 'D', 'R'}),
-    event_serial_number(eh.getSerialNumber()),
+    event_serial_number(eh.getEventNumber()),
     year(eh.getYear()), month(eh.getMonth()), day(eh.getDay()),
     hour(eh.getHour()), minute(eh.getMinute()), second(eh.getSecond()),
-    millisecond(eh.getMillisecond()), range(eh.getRange())
+    millisecond(eh.getMillisecond()), range(eh.getRange()),
+    bheader(eh.getBoardNumber()), tcheader(eh.getTriggerCell())
   {
 
   }

@@ -50,6 +50,17 @@ namespace DRS4_data {
   };
 
 
+  struct TCHEADER {
+    TCHEADER(const unsigned short tcell) :
+      trigger_cell(tcell)
+    {
+      strncpy(tc, "T#", 2);
+    }
+    char           tc[2];
+    unsigned short trigger_cell;
+  } ;
+
+
   class EHEADER{
   public:
     EHEADER();
@@ -59,15 +70,19 @@ namespace DRS4_data {
     void setTimeStamp();
     void setRange(unsigned short _range) { range = _range; }
 
-    unsigned getSerialNumber()  const { return event_serial_number; }
-    unsigned getYear()          const { return year; }
-    unsigned getMonth()         const { return month; }
-    unsigned getDay()           const { return day; }
-    unsigned getHour()          const { return hour; }
-    unsigned getMinute()        const { return minute; }
-    unsigned getSecond()        const { return second; }
-    unsigned getMillisecond()   const { return millisecond; }
-    unsigned getRange()         const { return range; }
+    unsigned short getEventNumber()  const { return event_serial_number; }
+    unsigned short getYear()          const { return year; }
+    unsigned short getMonth()         const { return month; }
+    unsigned short getDay()           const { return day; }
+    unsigned short getHour()          const { return hour; }
+    unsigned short getMinute()        const { return minute; }
+    unsigned short getSecond()        const { return second; }
+    unsigned short getMillisecond()   const { return millisecond; }
+    unsigned short getRange()         const { return range; }
+    unsigned short getBoardNumber()   const { return bheader.board_serial_number; }
+    unsigned short getTriggerCell()   const { return tcheader.trigger_cell; }
+
+    void setTriggerCell(unsigned short tc) { tcheader.trigger_cell = tc; }
 
     int write(std::ofstream*) const;
 
@@ -82,18 +97,9 @@ namespace DRS4_data {
      unsigned short second;
      unsigned short millisecond;
      unsigned short range;
+     BHEADER bheader;
+     TCHEADER tcheader;
   };
-
-
-  struct TCHEADER {
-    TCHEADER(const unsigned short tcell) :
-      trigger_cell(tcell)
-    {
-      strncpy(tc, "T#", 2);
-    }
-    char           tc[2];
-    const unsigned short trigger_cell;
-  } ;
 
 
   struct CHEADER {
@@ -154,7 +160,7 @@ namespace DRS4_data {
       return chData.at(iboard).size();
     }
 
-    unsigned getEvtNumber() const { return header.getSerialNumber(); }
+    unsigned getEvtNumber() const { return header.getEventNumber(); }
 
     int write(std::ofstream *) const ;
 
