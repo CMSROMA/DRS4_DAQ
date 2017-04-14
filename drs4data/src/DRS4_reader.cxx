@@ -114,7 +114,7 @@ int DRS4_reader::run(const char *filename, DRS4_writer *writer) {
         for (int ichan=0 ; ichan<4 ; ichan++) {
           /* decode waveform (Y) arrays in mV */
           std::cout << "Decoding waveform in chan #" << ichan << std::endl;
-          b->DecodeWave(0, ichan, event->getChData(iboard, ichan)->data);
+          b->DecodeWave(rawWave->eventWaves.at(iboard)->waveforms, 0, ichan, event->getChData(iboard, ichan)->data);
         } // Loop over the channels
 
       }
