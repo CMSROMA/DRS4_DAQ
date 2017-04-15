@@ -46,6 +46,7 @@ private:
   unsigned iEvent;
 
   std::thread *internalThread;
+  // This has to be static for the compiler to accept it as argument for the thread
   static void run( DRS4_writer*, const unsigned _nEvtMax = -1);
 
   bool f_stop;
