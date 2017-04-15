@@ -135,7 +135,7 @@ int main(int argc, char* argv[]) {
   // Start DAQ
   mb->EnableTcal(5);
   mb->SelectClockSource(0);
- // writer.setAutoTrigger();
+//  writer.setAutoTrigger();
   writer.start(nEvtMax);
   while (!writer.isRunning()) { std::this_thread::sleep_for(std::chrono::milliseconds(10)); };
 

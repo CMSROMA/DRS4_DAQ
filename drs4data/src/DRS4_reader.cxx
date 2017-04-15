@@ -16,6 +16,9 @@
 #include "TCanvas.h"
 #include "TGraph.h"
 #include "TH1F.h"
+#include "TF1.h"
+#include "TLatex.h"
+#include "TString.h"
 
 DRS4_reader::DRS4_reader(DRS4_data::DRS4_fifo *const _fifo, DRS* _drs) :
   drs(_drs), fifo(_fifo), rawWave(NULL), event(NULL),
@@ -114,7 +117,7 @@ int DRS4_reader::run(const char *filename, DRS4_writer *writer) {
   const bool tRotated = true;    // Whether time points should come rotated
   // Voltage calibrations
   const bool applyResponseCalib = true;  // Remove noise and offset variations
-  const bool adjustToClock = false;       // What does this do ???
+  const bool adjustToClock = false;      // Extra rotation of amplitudes in the calibration step - SET TO FALSE !
   const bool adjustToClockForFile = false;
   const bool applyOffsetCalib = false;   // ?
 
@@ -139,8 +142,9 @@ int DRS4_reader::run(const char *filename, DRS4_writer *writer) {
         DRSBoard *b = drs->GetBoard(iboard);
         for (unsigned char ichan=0 ; ichan<4 ; ichan++) {
 
-
           /* decode waveform (Y) arrays in mV */
+          // Do not use DRSBoard::GetTriggerCell()
+          // - it shows the CURRENT trigger cell, not that corresponding to the waveform
           std::cout << "Decoding waveform in chan #" << int(ichan)+1 << std::endl;
           b->GetWave(rawWave->eventWaves.at(iboard)->waveforms, 0, ichan*2, (short*)event->getChData(iboard, ichan)->data,
               applyResponseCalib, int(rawWave->header.getTriggerCell()), -1, adjustToClockForFile, 0, applyOffsetCalib);
@@ -148,12 +152,10 @@ int DRS4_reader::run(const char *filename, DRS4_writer *writer) {
           float time[kNumberOfBins];
           b->GetTime(0, ichan*2, int(rawWave->header.getTriggerCell()), time, tCalibrated, tRotated);
           float amplitude[kNumberOfBins];
-//          b->GetWave(rawWave->eventWaves.at(iboard)->waveforms, 0, ichan*2, amplitude,
-  //            applyResponseCalib, int(rawWave->header.getTriggerCell()), -1, adjustToClock, 0, applyOffsetCalib);
           b->GetWave(rawWave->eventWaves.at(iboard)->waveforms, 0, ichan*2, amplitude, applyResponseCalib,
-              b->GetTriggerCell(rawWave->eventWaves.at(iboard)->waveforms, 0), -1, adjustToClock, 0, applyOffsetCalib);
+              int(rawWave->header.getTriggerCell()), -1, adjustToClock, 0, applyOffsetCalib);
           c.cd(int(ichan)+1);
- //         TFrame *frm = new TFrame(0, -600, 50, 600);
+
           TGraph *gr = new TGraph(kNumberOfBins, time, amplitude);
 //          gPad->SetGridx(5);
   //        TGraph *gr = new TGraph(51, time, amplitude);
@@ -167,8 +169,20 @@ int DRS4_reader::run(const char *filename, DRS4_writer *writer) {
           gr->GetHistogram()->SetMinimum(-600);
           gr->GetHistogram()->SetMaximum(600);
      /*     gr->GetHistogram()->GetXaxis()->SetNdivisions(20, 2, 0, kFALSE);*/
-          gr->GetHistogram()->GetXaxis()->SetRangeUser(0, 200.000);
+          gr->GetHistogram()->GetXaxis()->SetRangeUser(0, 200.);
           gr->Draw("AL");
+          TF1 *f = new TF1("f", "[0]*sin([1]*x+[2])", 0, 200);
+          f->SetParameter(0, 500);
+          f->FixParameter(1, 0.1*2*M_PI);
+          f->SetParameter(2, 0.);
+    //      gr->Fit(f, "", "", 0, 200.);
+          f->ReleaseParameter(1);
+      //    gr->Fit(f, "", "", 0, 200.);
+          //f->Draw("same");
+          TLatex *tl = new TLatex(5, 520., Form("#nu = %.3f MHz", f->GetParameter(1)*1000/2/M_PI));
+          TLatex *ttc = new TLatex(5, 40., Form("tc_{headers} = %d, tc_{board} = %d",
+              rawWave->header.getTriggerCell(), b->GetTriggerCell(rawWave->eventWaves.at(iboard)->waveforms, 0)));
+        //  tl->Draw();
         } // Loop over the channels
 
         if(firstpage) {
