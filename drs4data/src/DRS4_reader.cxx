@@ -180,7 +180,7 @@ int DRS4_reader::run(const char *filename, DRS4_writer *writer) {
       event->write(file);
       processEvent();
       delete event;
-    }
+    } // If rawWave (fifo not empty)
     else {
       if(f_stopWhenEmpty || !writer->isRunning()) {
         f_stop = true;
@@ -188,7 +188,7 @@ int DRS4_reader::run(const char *filename, DRS4_writer *writer) {
       else {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
       } // if(f_stopWhenEmpty)
-    } // if(event)
+    } // if(rawWave)
   } // !f_stop
 
   c.Print("test.pdf)");

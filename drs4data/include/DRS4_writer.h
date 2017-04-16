@@ -27,7 +27,8 @@ public:
   void stop() ;
   void join() ;
 
-  bool isRunning() { return f_isRunning; }
+  bool isRunning() const { return f_isRunning; }
+  bool isJoinable();
 
   void setAutoTrigger(bool at=true) { f_autoTrigger = at; }
 

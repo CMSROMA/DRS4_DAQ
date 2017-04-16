@@ -27,15 +27,18 @@ DRS4_writer::DRS4_writer(DRS *const _drs, DRS4_data::DRS4_fifo *const _fifo) :
 
 
 DRS4_writer::~DRS4_writer() {
-  if (internalThread) {
-    if(internalThread->joinable()) {
-      stop();
-    }
-  }
+
+  stop();
 }
 
 
 void DRS4_writer::start(const unsigned nEvtMax) {
+
+  if(internalThread) {
+    std::cout << "DRS4_writer::start() - Internal thread already exists.\n"
+        "DRS4_writer is already running, or this is an error. Cannot (re)start.\n";
+    return;
+  }
 
   std::cout << "DRS4_writer::start(" << nEvtMax << ")." << std::endl;
   f_stop = false;
@@ -44,17 +47,42 @@ void DRS4_writer::start(const unsigned nEvtMax) {
 
 
 void DRS4_writer::stop() {
-  std::cout << "Stopping DRS4_writer.\n";
-  f_stop = true;
-  join();
+
+  if (internalThread) {
+    if(internalThread->joinable()) {
+      std::cout << "Stopping DRS4_writer.\n";
+      f_stop = true;
+      internalThread->join();
+    }
+    delete internalThread;
+  }
+  internalThread = NULL;
 }
+
 
 void DRS4_writer::join() {
   std::cout << "Joining DRS4_writer.\n";
-  internalThread->join();
-  delete internalThread;
-  internalThread = NULL;
+  if (isJoinable()) {
+    internalThread->join();
+    delete internalThread;
+    internalThread = NULL;
+  }
 }
+
+
+
+bool DRS4_writer::isJoinable() {
+
+  if(internalThread) {
+    if (internalThread->joinable()) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+
 
 void DRS4_writer::run( DRS4_writer* w, const unsigned nEvtMax) {
 
@@ -67,9 +95,9 @@ void DRS4_writer::run( DRS4_writer* w, const unsigned nEvtMax) {
     return;
   }
 
-  double range = w->drs->GetBoard(0)->GetInputRange();
-
   w->f_isRunning = true;
+
+  double range = w->drs->GetBoard(0)->GetInputRange();
 
 
   while(!w->f_stop && w->iEvent<nEvtMax) {

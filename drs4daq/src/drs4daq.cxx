@@ -143,6 +143,7 @@ int main(int argc, char* argv[]) {
   if ( readerState < 0 ) writer.stop();
 
   writer.join();
+
   reader.stopWhenEmpty();
 
   return 0;
