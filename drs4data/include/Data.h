@@ -50,6 +50,9 @@ struct WaveformOnline {
 	Float_t maxVal;
 	Float_t baseLine;
 	Float_t Eof10ns;
+	Float_t T90;
+	Float_t T70;
+	Float_t T50;
 	TH1F* hist;
 };
 
