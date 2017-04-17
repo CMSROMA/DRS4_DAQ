@@ -1,8 +1,8 @@
-#include "Data.h"
+#include "WaveProcessor.h"
 
-Data::Data() {aligned=false; alocated=false; baseLineAVG=BASELINE ; baseLineCNT=0;}
+WaveProcessor::WaveProcessor() {aligned=false; alocated=false; baseLineAVG=BASELINE ; baseLineCNT=0;}
 
-Data::~Data(){
+WaveProcessor::~WaveProcessor(){
 /*	
 	free_matrix(TimeBinWidth,1,No_of_Ch,0,1023);
 	free_matrix(BinVoltage,1,No_of_Ch,0,1023);
@@ -21,13 +21,13 @@ Data::~Data(){
 
 ////////////////////////// set and get of arrays of DRS4 /////////////////////////////////////////////////////////////////////
 
-void Data::set_time_calibration(int ch, int bin, float value){
+void WaveProcessor::set_time_calibration(int ch, int bin, float value){
 	aligned = false; // any change of time induce that the alignment is no more valid
     TimeBinWidth[ch][bin]=value;
 }
-float Data::get_time_calibration(int ch, int bin ) const {return TimeBinWidth[ch][bin];}
+float WaveProcessor::get_time_calibration(int ch, int bin ) const {return TimeBinWidth[ch][bin];}
 
-void Data::set_bin_time_n_voltage(int ch, int bin, USHORT voltage, USHORT range, USHORT trigger_Cell){
+void WaveProcessor::set_bin_time_n_voltage(int ch, int bin, USHORT voltage, USHORT range, USHORT trigger_Cell){
 	float aux_f=0; 
 	aligned=false; // any change of time induce that the alignment is no more valid
 	
@@ -38,7 +38,7 @@ void Data::set_bin_time_n_voltage(int ch, int bin, USHORT voltage, USHORT range,
 
 //void Data::set_voltage_bin_total(int ch, int bin, float value) {BinVoltage[ch][bin]=value;}
 
-float Data::get_voltage_bin_total(int ch, int bin) const { return BinVoltage[ch][bin];}
+float WaveProcessor::get_voltage_bin_total(int ch, int bin) const { return BinVoltage[ch][bin];}
 
 /*
 void Data::set_time_of_bin_total(int ch, int bin, float value){
@@ -46,12 +46,12 @@ void Data::set_time_of_bin_total(int ch, int bin, float value){
     TimeBinVoltage[ch][bin]=value;
 }
 */
-float Data::get_time_of_bin_total(int ch, int bin) const { return TimeBinVoltage[ch][bin]; }
+float WaveProcessor::get_time_of_bin_total(int ch, int bin) const { return TimeBinVoltage[ch][bin]; }
 
 
 /////////////////////////////////// allignCells0 //////////////////////////////////////////////////////////////////////////
 
-void Data::allignCells0(USHORT trigger_cell){ // align cell #0 of all channels
+void WaveProcessor::allignCells0(USHORT trigger_cell){ // align cell #0 of all channels
 	int trigCell, t1, t2, dt, chn, i;
 	
 	trigCell = (int) trigger_cell;
@@ -73,7 +73,7 @@ void Data::allignCells0(USHORT trigger_cell){ // align cell #0 of all channels
 
 //////////////////////// CreateHistograms() ///////////////////////////////////////////////////////////////////////////////////////
 
-void Data::CreateTempHistograms(){
+void WaveProcessor::CreateTempHistograms(){
 	//Float_t time_aux[1024];
 	Int_t pomi;
 	if (DEBUG2) cout<<"CreateHistograms"<<endl;
@@ -145,7 +145,7 @@ void Data::CreateTempHistograms(){
 
 ///////////////////////////////////// DeleteHistograms /////////////////////////////////////////////////////////////////
 
-void Data::DeleteTempHistograms(){
+void WaveProcessor::DeleteTempHistograms(){
 	TempShapeCh1->Delete();
 	if (TempShapeCh2) TempShapeCh2->Delete(); 
 	if (No_of_Ch>2) delete TempShapeCh3;
@@ -166,7 +166,7 @@ TH1F* Data::GetHistogram(int Ch) const {
 	exit(1);
 }
 */
-TH1F* Data::GetTempHist(int Ch) const {
+TH1F* WaveProcessor::GetTempHist(int Ch) const {
 	if ((Ch=1)&&(No_of_Ch>0)) return TempShapeCh1;
 	if ((Ch=2)&&(No_of_Ch>1)) return TempShapeCh2;
 	if ((Ch=3)&&(No_of_Ch>2)) return TempShapeCh3;
@@ -176,7 +176,7 @@ TH1F* Data::GetTempHist(int Ch) const {
 	exit(1);
 }
 
-void Data::PrintCurrentHist(int ch) const {
+void WaveProcessor::PrintCurrentHist(int ch) const {
 	TH1F* tmp;
 	char histfilename[60];
 	switch (ch) {
@@ -215,7 +215,7 @@ void Data::PrintCurrentHist(int ch) const {
 
 ///////////// give_time_n_amplitude /////////////////////
 
-WaveformParam Data::give_waveform_parameters(int Ch) {
+WaveformParam WaveProcessor::give_waveform_parameters(int Ch) {
 
 WaveformParam output; //how many parameters to be returned
 
@@ -331,7 +331,7 @@ WaveformParam output; //how many parameters to be returned
 	return output;
 }
 
-WaveformOnline Data::ProcessOnline(Float_t* RawTimeArr, Float_t* RawVoltArr, Int_t RawArrLength){
+WaveformOnline WaveProcessor::ProcessOnline(Float_t* RawTimeArr, Float_t* RawVoltArr, Int_t RawArrLength){
 	WaveformOnline output;
 	int i;
 	char histTitle[30];
@@ -378,7 +378,7 @@ WaveformOnline Data::ProcessOnline(Float_t* RawTimeArr, Float_t* RawVoltArr, Int
 
 ///////////// reset_temporary_histograms() //////////////
 
-void Data::reset_temporary_histograms(){
+void WaveProcessor::reset_temporary_histograms(){
 	TempShapeCh1->Reset();
 	if (No_of_Ch>1) TempShapeCh2->Reset(); 
 	if (No_of_Ch>2) TempShapeCh3->Reset();

@@ -21,6 +21,7 @@
 
 
 #include "MonitorFrame.h"
+#include "WaveProcessor.h"
 #include "Riostream.h"
 #include "TMath.h"
 
@@ -90,7 +91,7 @@ MonitorFrame::MonitorFrame(const TGWindow *p, const config *opt, DRS * const _dr
 	filename = basename;
 
 	// Placement of histograms
-	unsigned ny = int(sqrt(nObservables));
+	unsigned ny = int(sqrt(float(nObservables)));
 	unsigned nx = int(ceil(nObservables / ny));
   fCanvas01->Divide(nx, ny, .002, .002);
   fCanvas02->Divide(nx, ny, .002, .002);

@@ -1,5 +1,5 @@
-#ifndef DATA_H
-#define DATA_H
+#ifndef WAVEPROCESSOR_H
+#define WAVEPROCESSOR_H
 
 #define DEBUG 0
 #define DEBUG2 0 // 
@@ -57,7 +57,7 @@ struct WaveformOnline {
 };
 
 
-class Data {
+class WaveProcessor {
 
 // TimeBinWidth, BinVoltage are showing to which channel they belong to 
 // BinVoltage[1][321]CH1, bin 321 CH STARTS WITH 1 !!!!! to corespond to real channel, mark 0 is ignored
@@ -65,8 +65,8 @@ class Data {
 
 	public:
 	
-	Data();//constructor
-	~Data();//destructor
+	WaveProcessor();   //constructor
+	~WaveProcessor();  //destructor
 	
 	// setget DRS4 waveform analysis parameters 
 	void setTriggerHeight(float value) {triggerHeight=value;}
@@ -137,4 +137,4 @@ class Data {
     
     
 };
-#endif //DATA_H
+#endif //WAVEPROCESSOR_H
