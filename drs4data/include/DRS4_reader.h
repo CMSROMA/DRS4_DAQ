@@ -27,6 +27,9 @@ public:
   // Stop as soon as the fifo queue is empty
   void stopWhenEmpty() ;
 
+  unsigned getIEvtSerial() const { return iEvtSerial; }
+  unsigned getIEvtProcessed() const { return iEvtProcessed; }
+
 private:
 
   DRS4_reader();
@@ -37,6 +40,9 @@ private:
   DRS4_data::RawEvent *rawWave;
   DRS4_data::Event *event;
   DRS4_data::DRSHeaders *headers;
+
+  unsigned iEvtProcessed; // Number of events processed by the reader
+  unsigned iEvtSerial;    // Serial number reported by the last processed event
 
   std::ofstream *file;
 

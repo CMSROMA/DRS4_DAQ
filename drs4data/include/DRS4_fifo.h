@@ -30,6 +30,7 @@ namespace DRS4_data {
 
 
   struct RawEvent {
+    ~RawEvent();
     std::vector<Waveforms*> eventWaves;
     EHEADER header;
   };
@@ -39,6 +40,7 @@ namespace DRS4_data {
 
   public:
     DRS4_fifo();
+    ~DRS4_fifo();
 
     // Returns the pointer to RawEvent object. The pointer is popped from the queue.
     // The caller is responsible for freeing the memory (deleting the pointer).

@@ -22,7 +22,7 @@
 
 DRS4_reader::DRS4_reader(DRS4_data::DRS4_fifo *const _fifo, DRS* _drs) :
   drs(_drs), fifo(_fifo), rawWave(NULL), event(NULL),
-  headers(NULL), file(NULL),
+  headers(NULL), iEvtSerial(0), iEvtProcessed(0), file(NULL),
   f_stop(false), f_stopWhenEmpty(false)
 {
   std::cout << "DRS4_reader::DRS4_reader()." << std::endl;
@@ -121,15 +121,17 @@ int DRS4_reader::run(const char *filename, DRS4_writer *writer) {
   const bool adjustToClockForFile = false;
   const bool applyOffsetCalib = false;   // ?
 
+  iEvtProcessed=0;
+
   while(!f_stop) {
 
     rawWave = fifo->read();
 
     if(rawWave) {
-      unsigned iEvt = rawWave->header.getEventNumber();
-      std::cout << "Read event #" << iEvt << std::endl;
+      iEvtSerial = rawWave->header.getEventNumber();
+      std::cout << "Read event #" << iEvtSerial << std::endl;
       std::cout << "Trigger cell is " << rawWave->header.getTriggerCell() << std::endl;
-      event = new DRS4_data::Event(iEvt, rawWave->header, drs);
+      event = new DRS4_data::Event(iEvtSerial, rawWave->header, drs);
 
       for(int iboard=0; iboard<headers->chTimes.size(); iboard++) {
         DRSBoard *b = drs->GetBoard(iboard);
@@ -180,6 +182,7 @@ int DRS4_reader::run(const char *filename, DRS4_writer *writer) {
       event->write(file);
       processEvent();
       delete event;
+      iEvtProcessed++;
     } // If rawWave (fifo not empty)
     else {
       if(f_stopWhenEmpty || !writer->isRunning()) {

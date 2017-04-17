@@ -14,10 +14,16 @@
 #include "DRS4_writer.h"
 #include "DRS4_reader.h"
 #include "DRS.h"
+#include "MonitorFrame.h"
 
+#include "TApplication.h"
 
 
 int main(int argc, char* argv[]) {
+
+  /*** ROOT TApplication ***/
+  TApplication *app = new TApplication("App", &argc, argv);
+
 
   /* do initial scan */
   DRS *drs;
@@ -43,27 +49,24 @@ int main(int argc, char* argv[]) {
   /*** Command line input ***/
   int iarg = 1;
   std::string datfilename("test.dat");
-  if(argc > iarg) datfilename = argv[iarg]; iarg++;
+  if (app->Argc() > iarg) datfilename = app->Argv()[iarg]; iarg++;
   unsigned nEvtMax = -1;
-  if(argc > iarg) nEvtMax = atoi(argv[iarg]); iarg++;
+  if (app->Argc() > iarg) nEvtMax = atoi(app->Argv()[iarg]); iarg++;
 
+
+  /*** Data pointers ***/
   DRS4_data::DRSHeaders *headers = NULL;
   DRS4_data::DRS4_fifo *fifo = new DRS4_data::DRS4_fifo;
 
-  /* Examine command-line input for requested number(s) of channels */
-  std::vector<int> nChansVec;
-  for (int iboard=0; iboard<drs->GetNumberOfBoards(); iboard++) {
-    int nChans = 4; // Fixme: Is 4 the good default? Or are two channels used for one input?
-    if(argc > iarg) nChans = atoi(argv[iarg]); iarg++;
-    if(nChans>4) {
-      std::cout << "WARNING: Requested number of channels for board #"
-          << iboard << " is " << nChans << ". Correcting to 4.\n";
-      nChans = 4;
-    }
-  }
+  /*
+   * We allow more than one board with synchronized triggers.
+   * For simplicity, we assume that 4 channels are acquired from each board.
+   */
 
   /* use first board with highest serial number as the master board */
+  drs->SortBoards();
   DRSBoard *mb = drs->GetBoard(0);
+
 
   /* common configuration for all boards */
   for (int iboard=0 ; iboard<drs->GetNumberOfBoards() ; iboard++) {
@@ -73,7 +76,6 @@ int main(int argc, char* argv[]) {
     DRSBoard *b = drs->GetBoard(iboard);
 
     /* initialize board */
-    std::cout << "Initializing." << std::endl;
     b->Init();
 
     /* select external reference clock for slave modules */
@@ -86,33 +88,30 @@ int main(int argc, char* argv[]) {
     }
 
     /* set sampling frequency */
-    std::cout << "Setting frequency" << std::endl;
+    std::cout << "Setting frequency to 5 GHz." << std::endl;
     b->SetFrequency(5, true);
 
     /* set input range to -0.5V ... +0.5V */
-    std::cout << "Setting input range." << std::endl;
+    std::cout << "Setting input range to (-0.5V -> +0.5V)." << std::endl;
     b->SetInputRange(0);
 
-    /* enable hardware trigger */
-    /* First: External LEMO/FP/TRBUS trigger
-     * Second: analog threshold (internal) trigger
+    /* enable hardware trigger
+     * (1, 0) = "fast trigger", "analog trigger"
+     * Board types 8, 9 always need (1, 0)
+     * other board types take (1, 0) for external (LEMO/FP/TRBUS)
+     * and (0, 1) for internal trigger (analog threshold).
      */
-    std::cout << "Setting trigger mode." << std::endl;
-    // (1, 0) = "fast trigger", "analog trigger"
-    // Board types 8, 9 always need (1, 0)
-    // other board types take (1, 0) for external and (0, 1) for internal trigger.
     b->EnableTrigger(1, 0);
 
-   // b->
 
     if (iboard == 0) {
-      /* master board: enable hardware trigger on CH1 at 50 mV positive edge */
+      /* master board: enable hardware trigger on CH1 at -50 mV negative edge */
       std::cout << "Configuring master board." << std::endl;
       b->SetTranspMode(1);
       b->SetTriggerSource(1<<0);        // set CH1 as source
-      b->SetTriggerLevel(0.05);        // -50 mV
-      b->SetTriggerPolarity(false);      // negative edge
-      b->SetTriggerDelayNs(150);          // Trigger delay shifts waveform left
+      b->SetTriggerLevel(-0.05);        // -50 mV
+      b->SetTriggerPolarity(true);      // negative edge
+      b->SetTriggerDelayNs(150);        // Trigger delay shifts waveform left
     } else {
       /* slave boards: enable hardware trigger on Trigger IN */
       std::cout << "Configuring slave board." << std::endl;
