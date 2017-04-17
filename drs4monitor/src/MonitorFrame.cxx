@@ -35,9 +35,10 @@
 using namespace DRS4_data;
 
 
-MonitorFrame::MonitorFrame(const TGWindow *p, const config *opt, DRS * const _drs) :
+MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _drs) :
   TGMainFrame(p, 200, 200),
   limits(opt->histolo, opt->histohi),
+  options(opt),
   fCanvas01(new TCanvas("DRS4Canvas02", "DRS4 Monitor 01", opt->_w, opt->_h)),
   frCanvas01(new TRootCanvas(fCanvas01, "DRS4 Monitor 01", 0, 200, opt->_w, opt->_h)),
   fCanvas02(new TCanvas("DRS4Canvas02", "DRS4 Monitor 02", opt->_w, opt->_h)),
@@ -61,17 +62,17 @@ MonitorFrame::MonitorFrame(const TGWindow *p, const config *opt, DRS * const _dr
 
   for(int iobs=0; iobs<nObservables; iobs++) {
     kObservables kobs = static_cast<kObservables>(iobs);
-    histo01[iobs] = new TH1F(Form("h%d", iobs), Form("%s_{1}; %s_{1} (%s)", obs->Name(kobs), obs->Name(kobs), obs->Unit(kobs)), 100, opt->histolo[iobs], opt->histohi[iobs]);
-    histo02[iobs] = new TH1F(Form("h%d", iobs), Form("%s_{2}; %s_{2} (%s)", obs->Name(kobs), obs->Name(kobs), obs->Unit(kobs)), 100, opt->histolo[iobs], opt->histohi[iobs]);
+    histo01[iobs] = new TH1F(Form("h1%d", iobs), Form("%s_{1}; %s_{1} (%s)", obs->Title(kobs), obs->Title(kobs), obs->Unit(kobs)), 100, opt->histolo[iobs], opt->histohi[iobs]);
+    histo02[iobs] = new TH1F(Form("h2%d", iobs), Form("%s_{2}; %s_{2} (%s)", obs->Title(kobs), obs->Title(kobs), obs->Unit(kobs)), 100, opt->histolo[iobs], opt->histohi[iobs]);
   }
 
-  eTot12 = new TH2F("eTot12", Form("eTot2 vs. eTot1; %s_{1} (%s); %s_{2} (%s)", obs->Name(eTot), obs->Unit(eTot), obs->Name(eTot), obs->Unit(eTot)),
+  eTot12 = new TH2F("eTot12", Form("eTot2 vs. eTot1; %s_{1} (%s); %s_{2} (%s)", obs->Title(eTot), obs->Unit(eTot), obs->Title(eTot), obs->Unit(eTot)),
       (opt->histohi[eTot]-opt->histolo[eTot])/opt->_xRed, opt->histolo[eTot], opt->histohi[eTot],
       (opt->histohi[eTot]-opt->histolo[eTot])/opt->_xRed, opt->histolo[eTot], opt->histohi[eTot]);
-  ePrompt12 = new TH2F("ePrompt12", Form("ePrompt2 vs. ePrompt1; %s_{1} (%s); %s_{2} (%s)", obs->Name(ePrompt), obs->Unit(ePrompt), obs->Name(ePrompt), obs->Unit(ePrompt)),
+  ePrompt12 = new TH2F("ePrompt12", Form("ePrompt2 vs. ePrompt1; %s_{1} (%s); %s_{2} (%s)", obs->Title(ePrompt), obs->Unit(ePrompt), obs->Title(ePrompt), obs->Unit(ePrompt)),
       (opt->histohi[ePrompt]-opt->histolo[ePrompt])/opt->_xRed, opt->histolo[ePrompt], opt->histohi[ePrompt],
       (opt->histohi[ePrompt]-opt->histolo[ePrompt])/opt->_xRed, opt->histolo[ePrompt], opt->histohi[ePrompt]);
-  time12 = new TH2F("time12", Form("t2 vs. t1; %s_{1} (%s); %s_{2} (%s)", obs->Name(tArrival), obs->Unit(tArrival), obs->Name(tArrival), obs->Unit(tArrival)),
+  time12 = new TH2F("time12", Form("t2 vs. t1; %s_{1} (%s); %s_{2} (%s)", obs->Title(tArrival), obs->Unit(tArrival), obs->Title(tArrival), obs->Unit(tArrival)),
       (opt->histohi[tArrival]-opt->histolo[tArrival])/opt->_xRed, opt->histolo[tArrival], opt->histohi[tArrival],
       (opt->histohi[tArrival]-opt->histolo[tArrival])/opt->_xRed, opt->histolo[tArrival], opt->histohi[tArrival]);
   time34 = new TH2F("time34", "t4 vs. t3; t_{3} (ns); t_{4} (ns)", 100, 0., 100., 100, 0., 100.);
@@ -235,6 +236,9 @@ void MonitorFrame::Start() {
 
   fifo->Discard();
   writer = new DRS4_writer(drs, fifo);
+  if(options->triggerSource == 0) {
+    writer->setAutoTrigger();
+  }
 
   /*** Clear histograms ***/
   for(int iobs=0; iobs<nObservables; iobs++) {

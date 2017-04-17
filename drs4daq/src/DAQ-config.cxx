@@ -16,7 +16,8 @@ using namespace DRS4_data;
 config::config(Observables *_obs) :
 	_w(600), _h(350),
 	_tRed(10), _xRed(2), _yRed(2),
-	trigDelay(150),
+	sampleRate(5), inputRange(0), triggerLevel(-0.05),
+	triggerNegative(true), trigDelay(150), triggerSource(1),
 	obs(_obs)
 {
 	for(int i=0; i<nObservables; i++) {
@@ -36,7 +37,35 @@ int config::DumpOptions() const {
 	}
 
 	std::cout << "\nDump of the DAQ configuration:\n\n";
-	std::cout << "Trigger delay: " << (short)trigDelay <<  std::endl;
+  std::cout << "Sample rate: " << (short)sampleRate <<  std::endl;
+  std::cout << "Input range center: " << (short)inputRange <<  std::endl;
+  std::cout << "Trigger level: " << (short)triggerLevel <<  std::endl;
+  std::cout << "Trigger slope: " << (triggerNegative ? "negative" : "positive") <<  std::endl;
+  std::cout << "Trigger delay: " << (short)trigDelay <<  std::endl;
+  std::cout << "Trigger source: ";
+  switch(triggerSource) {
+  case 1:
+    std::cout << "Channel 1." << std::endl;
+    break;
+  case 2:
+    std::cout << "Channel 2." << std::endl;
+    break;
+  case 4:
+    std::cout << "Channel 3." << std::endl;
+    break;
+  case 8:
+    std::cout << "Channel 4." << std::endl;
+    break;
+  case 16:
+    std::cout << "External." << std::endl;
+    break;
+  case 0:
+    std::cout << "Auto." << std::endl;
+    break;
+  default:
+    std::cout << "Unknown." << std::endl;
+    break;
+  }
 
 	return 0;
 }
@@ -116,12 +145,46 @@ int config::ParseOptions(std::ifstream *input)
 
 		/**** Evaluation board parameters ****/
 
-		if(line.Contains("trig", TString::kIgnoreCase) &&
-		   line.Contains("delay", TString::kIgnoreCase) )    {
-			TString par = line(number_patt);
-			trigDelay = par.Atoi();
-			continue;
-		}
+    if(line.Contains("sample", TString::kIgnoreCase) &&
+       line.Contains("rate", TString::kIgnoreCase) )    {
+      TString par = line(number_patt);
+      sampleRate = par.Atof();
+      continue;
+    }
+
+    if(line.Contains("input", TString::kIgnoreCase) &&
+       line.Contains("range", TString::kIgnoreCase) )    {
+      TString par = line(number_patt);
+      inputRange = par.Atof();
+      continue;
+    }
+
+    if(line.Contains("trig", TString::kIgnoreCase) &&
+       line.Contains("level", TString::kIgnoreCase) )    {
+      TString par = line(number_patt);
+      triggerLevel = par.Atof();
+      continue;
+    }
+
+    if(line.Contains("trig", TString::kIgnoreCase) &&
+       line.Contains("positive", TString::kIgnoreCase) )  {
+      triggerNegative = false;
+      continue;
+    }
+
+    if(line.Contains("trig", TString::kIgnoreCase) &&
+       line.Contains("delay", TString::kIgnoreCase) )    {
+      TString par = line(number_patt);
+      trigDelay = par.Atoi();
+      continue;
+    }
+
+    if(line.Contains("trig", TString::kIgnoreCase) &&
+       line.Contains("source", TString::kIgnoreCase) )    {
+      TString par = line(number_patt);
+      triggerSource = par.Atoi();
+      continue;
+    }
 
 	}
 	return 0;

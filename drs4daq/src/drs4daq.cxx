@@ -10,6 +10,7 @@
 #include <string>
 #include <iostream>
 
+#include "DAQ-config.h"
 #include "DRS4_fifo.h"
 #include "DRS4_writer.h"
 #include "DRS4_reader.h"
@@ -49,10 +50,26 @@ int main(int argc, char* argv[]) {
 
   /*** Command line input ***/
   int iarg = 1;
+  TString infileName("default.conf");
+  if(app->Argc() > iarg) infileName = app->Argv()[iarg]; iarg++;
   std::string datfilename("test.dat");
   if (app->Argc() > iarg) datfilename = app->Argv()[iarg]; iarg++;
   unsigned nEvtMax = -1;
   if (app->Argc() > iarg) nEvtMax = atoi(app->Argv()[iarg]); iarg++;
+
+  config options(new DRS4_data::Observables);
+  std::ifstream input(infileName.Data());
+  if(!input.is_open()) {
+    std::cout << "Cannot open input file " << infileName.Data() << ".\n";
+    return -1;
+  }
+
+  if (options.ParseOptions(&input) < 0) {
+    std::cout << "Error parsing options.\n";
+    return -1;
+  }
+
+  options.DumpOptions();
 
 
   /*
@@ -86,11 +103,11 @@ int main(int argc, char* argv[]) {
 
     /* set sampling frequency */
     std::cout << "Setting frequency to 5 GHz." << std::endl;
-    b->SetFrequency(5, true);
+    b->SetFrequency(options.sampleRate, true);
 
     /* set input range to -0.5V ... +0.5V */
     std::cout << "Setting input range to (-0.5V -> +0.5V)." << std::endl;
-    b->SetInputRange(0);
+    b->SetInputRange(options.inputRange);
 
     /* enable hardware trigger
      * (1, 0) = "fast trigger", "analog trigger"
@@ -105,10 +122,10 @@ int main(int argc, char* argv[]) {
       /* master board: enable hardware trigger on CH1 at -50 mV negative edge */
       std::cout << "Configuring master board." << std::endl;
       b->SetTranspMode(1);
-      b->SetTriggerSource(1<<0);        // set CH1 as source
-      b->SetTriggerLevel(-0.05);        // -50 mV
-      b->SetTriggerPolarity(true);      // negative edge
-      b->SetTriggerDelayNs(150);        // Trigger delay shifts waveform left
+      b->SetTriggerSource(options.triggerSource);        // set CH1 as source
+      b->SetTriggerLevel(options.triggerLevel);        // -50 mV
+      b->SetTriggerPolarity(options.triggerNegative);      // negative edge
+      b->SetTriggerDelayNs(options.trigDelay);        // Trigger delay shifts waveform left
     } else {
       /* slave boards: enable hardware trigger on Trigger IN */
       std::cout << "Configuring slave board." << std::endl;
@@ -118,17 +135,9 @@ int main(int argc, char* argv[]) {
   } // End loop for common configuration
 
 
-  // Start DAQ
-  mb->EnableTcal(5);
-  mb->SelectClockSource(0);
-//  writer.setAutoTrigger();
-
-  /*** Main frame ***/
-
-  const config* options;
-
+  /*** Monitor frame ***/
   std::cout << "Constructing frame." << std::endl;
-  MonitorFrame frame(gClient->GetRoot(), options, drs);
+  MonitorFrame frame(gClient->GetRoot(), &options, drs);
 
   app->Run();
   std::cout << "Finished! Press enter to close.\n";

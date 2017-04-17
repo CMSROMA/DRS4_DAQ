@@ -26,7 +26,12 @@ public:
 	int _tRed, _xRed, _yRed;
 
 // Options to setup the CC-USB
-	unsigned char trigDelay;  // Trigger delay in ns
+	double sampleRate;
+	double inputRange;
+	double triggerLevel;
+	bool   triggerNegative;
+	unsigned trigDelay;  // Trigger delay in ns
+	int triggerSource;
 
 private:
 	DRS4_data::Observables *obs;

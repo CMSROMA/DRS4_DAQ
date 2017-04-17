@@ -12,10 +12,8 @@
 
 #include <TGFrame.h>
 //#include <TRootEmbeddedCanvas.h>
-//#include "TTree.h"
 #include "TRandom3.h"
 #include "TStopwatch.h"
-//#include "TFile.h"
 
 
 #include "observables.h"
@@ -32,7 +30,6 @@ class DRS;
 class DRS4_writer;
 namespace DRS4_data {
   class DRS4_fifo;
-  //class DRS4_data::DRS4_reader;
   class RawEvent;
   class Event;
   class DRSHeaders;
@@ -45,7 +42,7 @@ class config;
 class MonitorFrame : public TGMainFrame {
 
 public:
-	  MonitorFrame(const TGWindow*,  const config*,  DRS* const);
+	  MonitorFrame(const TGWindow*,  config* const,  DRS* const);
 	  virtual ~MonitorFrame();
 
 	  /*** DAQ and control ***/
@@ -72,6 +69,8 @@ public:
 
 protected:
   /*** Display ***/
+
+	config *options;
 
   TGLabel *nEvtT;
   TGLabel *rateT;
