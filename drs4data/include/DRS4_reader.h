@@ -22,7 +22,7 @@ public:
   DRS4_reader(DRS4_data::DRS4_fifo *const, DRS *);
   ~DRS4_reader(); // close file
 
-  int run(const char *filename, DRS4_writer*);
+  int run(const char *filename, DRS4_writer* const);
   void stop() ;
   // Stop as soon as the fifo queue is empty
   void stopWhenEmpty() ;

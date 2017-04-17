@@ -11,33 +11,38 @@
 namespace DRS4_data {
 
 
-/*
- * Implementation of struct RawEvent
- */
+  /*
+   * Implementation of struct RawEvent
+   */
 
-RawEvent::~RawEvent() {
+  RawEvent::~RawEvent() {
 
-  for (unsigned iwf=0; iwf<eventWaves.size(); iwf++) {
-    delete eventWaves.at(iwf);
+    for (unsigned iwf=0; iwf<eventWaves.size(); iwf++) {
+      delete eventWaves.at(iwf);
+    }
   }
-}
 
 
-/*
- * Implementation of class DRS4_fifo
- */
+  /*
+   * Implementation of class DRS4_fifo
+   */
 
-DRS4_fifo::DRS4_fifo() {
+  DRS4_fifo::DRS4_fifo() {
 
-}
-
-DRS4_fifo::~DRS4_fifo() {
-
-  while(!eventWaves.empty()) {
-    delete eventWaves.front();
-    eventWaves.pop();
   }
-}
+
+  DRS4_fifo::~DRS4_fifo() {
+
+    Discard();
+  }
+
+  void DRS4_fifo::Discard() {
+
+    while(!eventWaves.empty()) {
+      delete eventWaves.front();
+      eventWaves.pop();
+    }
+  }
 
   // returns the pointer. The pointer is popped from the list.
   // The caller is responsible of freeing the memory.

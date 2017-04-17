@@ -10,6 +10,8 @@
 #ifndef DRS4DATA_INCLUDE_OBSERVABLES_H_
 #define DRS4DATA_INCLUDE_OBSERVABLES_H_
 
+#include <map>
+
 class TString;
 
 
@@ -49,9 +51,9 @@ namespace DRS4_data {
       observables.insert(std::pair<kObservables, Observable>(anotherObservable, Observable("something", "a.u.", 0)));
     }
 
-    float& Value(kObservables obs) const { return observables.at(obs).value; }
-    const char Name(kObservables obs) const { return observables.at(obs).name.Data(); }
-    const char Unit(kObservables obs) const { return observables.at(obs).unit.Data(); }
+    float& Value(kObservables obs) { return observables.at(obs).value; }
+    const char * Name(kObservables obs) const { return observables.at(obs).name.Data(); }
+    const char * Unit(kObservables obs) const { return observables.at(obs).unit.Data(); }
 
     unsigned NObservables() const { return observables.size(); }
 

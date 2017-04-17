@@ -16,6 +16,8 @@
 #include "TH1F.h"
 #include "TH2F.h"
 #include "TTimeStamp.h"
+#include "TFile.h"
+#include "TString.h"
 
 
 #include "MonitorFrame.h"
@@ -32,13 +34,15 @@
 using namespace DRS4_data;
 
 
-MonitorFrame::MonitorFrame(const TGWindow *p, const config *opt, DRS *_drs) :
+MonitorFrame::MonitorFrame(const TGWindow *p, const config *opt, DRS * const _drs) :
   TGMainFrame(p, 200, 200),
   limits(opt->histolo, opt->histohi),
   fCanvas01(new TCanvas("DRS4Canvas02", "DRS4 Monitor 01", opt->_w, opt->_h)),
   frCanvas01(new TRootCanvas(fCanvas01, "DRS4 Monitor 01", 0, 200, opt->_w, opt->_h)),
   fCanvas02(new TCanvas("DRS4Canvas02", "DRS4 Monitor 02", opt->_w, opt->_h)),
   frCanvas02(new TRootCanvas(fCanvas02, "DRS4 Monitor 02", 0, 200, opt->_w, opt->_h)),
+  fCanvas2D(new TCanvas("DRS4Canvas2D", "DRS4 Monitor 2D", opt->_w, opt->_h)),
+  frCanvas2D(new TRootCanvas(fCanvas2D, "DRS4 Monitor 2D", 0, 200, opt->_w, opt->_h)),
   tRed(opt->_tRed),
   basename("default"), filename("default"), timestamped(false),
   obs(new Observables),
@@ -46,26 +50,30 @@ MonitorFrame::MonitorFrame(const TGWindow *p, const config *opt, DRS *_drs) :
   time12(NULL), time34(NULL),
   timeLastSave(0),
   rate(NULL),
-  drs(_drs), fifo(NULL), writer(NULL), reader(NULL),
-  nEvents(100000),
+  drs(_drs), fifo(new DRS4_fifo), writer(NULL), rawWave(NULL), event(NULL),
+  headers(NULL), nEvtMax(10), iEvtSerial(0), iEvtProcessed(0), file(NULL),
+  f_stop(false), f_stopWhenEmpty(false),
+  timePoints(NULL), amplitudes(NULL),
   itRed(0),
   log(NULL)
 {
 
-  for(kObservables iobs=0; iobs<nObservables; iobs++) {
-    histo[iobs] = new TH1F(Form("h%d", iobs), Form("%s; %s (%s)", obs->Name(iobs), obs->Name(iobs), obs->Unit(iobs)), 100, opt->histolo[iobs], opt->histohi[iobs]);
+  for(int iobs=0; iobs<nObservables; iobs++) {
+    kObservables kobs = static_cast<kObservables>(iobs);
+    histo01[iobs] = new TH1F(Form("h%d", iobs), Form("%s_{1}; %s_{1} (%s)", obs->Name(kobs), obs->Name(kobs), obs->Unit(kobs)), 100, opt->histolo[iobs], opt->histohi[iobs]);
+    histo02[iobs] = new TH1F(Form("h%d", iobs), Form("%s_{2}; %s_{2} (%s)", obs->Name(kobs), obs->Name(kobs), obs->Unit(kobs)), 100, opt->histolo[iobs], opt->histohi[iobs]);
   }
 
-  eTot12(new TH2F("eTot12", Form("eTot2 vs. eTot1; %s_{1} (%s); %s_{2} (%s)", obs->Name(eTot), obs->Unit(eTot), obs->Name(eTot), obs->Unit(eTot)),
+  eTot12 = new TH2F("eTot12", Form("eTot2 vs. eTot1; %s_{1} (%s); %s_{2} (%s)", obs->Name(eTot), obs->Unit(eTot), obs->Name(eTot), obs->Unit(eTot)),
       (opt->histohi[eTot]-opt->histolo[eTot])/opt->_xRed, opt->histolo[eTot], opt->histohi[eTot],
-      (opt->histohi[eTot]-opt->histolo[eTot])/opt->_xRed, opt->histolo[eTot], opt->histohi[eTot]));
-  ePrompt12(new TH2F("ePrompt12", Form("ePrompt2 vs. ePrompt1; %s_{1} (%s); %s_{2} (%s)", obs->Name(ePrompt), obs->Unit(ePrompt), obs->Name(ePrompt), obs->Unit(ePrompt)),
+      (opt->histohi[eTot]-opt->histolo[eTot])/opt->_xRed, opt->histolo[eTot], opt->histohi[eTot]);
+  ePrompt12 = new TH2F("ePrompt12", Form("ePrompt2 vs. ePrompt1; %s_{1} (%s); %s_{2} (%s)", obs->Name(ePrompt), obs->Unit(ePrompt), obs->Name(ePrompt), obs->Unit(ePrompt)),
       (opt->histohi[ePrompt]-opt->histolo[ePrompt])/opt->_xRed, opt->histolo[ePrompt], opt->histohi[ePrompt],
-      (opt->histohi[ePrompt]-opt->histolo[ePrompt])/opt->_xRed, opt->histolo[ePrompt], opt->histohi[ePrompt]));
-  time12(new TH2F("time12", Form("t2 vs. t1; %s_{1} (%s); %s_{2} (%s)", obs->Name(tArrival), obs->Unit(tArrival), obs->Name(tArrival), obs->Unit(tArrival)),
+      (opt->histohi[ePrompt]-opt->histolo[ePrompt])/opt->_xRed, opt->histolo[ePrompt], opt->histohi[ePrompt]);
+  time12 = new TH2F("time12", Form("t2 vs. t1; %s_{1} (%s); %s_{2} (%s)", obs->Name(tArrival), obs->Unit(tArrival), obs->Name(tArrival), obs->Unit(tArrival)),
       (opt->histohi[tArrival]-opt->histolo[tArrival])/opt->_xRed, opt->histolo[tArrival], opt->histohi[tArrival],
-      (opt->histohi[tArrival]-opt->histolo[tArrival])/opt->_xRed, opt->histolo[tArrival], opt->histohi[tArrival]));
-  time34(new TH2F("time34", "t4 vs. t3; t_{3} (ns); t_{4} (ns)", 100, 0., 100., 100, 0., 100.));
+      (opt->histohi[tArrival]-opt->histolo[tArrival])/opt->_xRed, opt->histolo[tArrival], opt->histohi[tArrival]);
+  time34 = new TH2F("time34", "t4 vs. t3; t_{3} (ns); t_{4} (ns)", 100, 0., 100., 100, 0., 100.);
 
 
 	if( gApplication->Argc() > 1 ) basename = gApplication->Argv()[1];
@@ -84,16 +92,18 @@ MonitorFrame::MonitorFrame(const TGWindow *p, const config *opt, DRS *_drs) :
 	// Placement of histograms
 	unsigned ny = int(sqrt(nObservables));
 	unsigned nx = int(ceil(nObservables / ny));
-	fCanvas01->Divide(nx, ny, .002, .002);
-	for( unsigned ih=0; ih<nObservables; ih++) {
-	  fCanvas01->cd(1); histo[ih]->Draw();
-	}
+  fCanvas01->Divide(nx, ny, .002, .002);
+  fCanvas02->Divide(nx, ny, .002, .002);
+  for( unsigned ih=0; ih<nObservables; ih++) {
+    fCanvas01->cd(1); histo01[ih]->Draw();
+    fCanvas02->cd(1); histo02[ih]->Draw();
+  }
 
-	fCanvas02->Divide(2, 2, .002, .002);
-  fCanvas02->cd(1); eTot12->Draw();
-  fCanvas02->cd(2); ePrompt12->Draw();
-  fCanvas02->cd(3); time12->Draw();
-  fCanvas02->cd(4); time34->Draw();
+	fCanvas2D->Divide(2, 2, .002, .002);
+	fCanvas2D->cd(1); eTot12->Draw();
+	fCanvas2D->cd(2); ePrompt12->Draw();
+	fCanvas2D->cd(3); time12->Draw();
+	fCanvas2D->cd(4); time34->Draw();
   eTot12->SetStats(0);
   ePrompt12->SetStats(0);
   time12->SetStats(0);
@@ -180,9 +190,9 @@ MonitorFrame::MonitorFrame(const TGWindow *p, const config *opt, DRS *_drs) :
 MonitorFrame::~MonitorFrame() {
 	std::cout << "Deleting main frame.\n";
 
-  for(kObservables iobs=0; iobs<nObservables; iobs++) {
-    delete histo[iobs];
-    histo[iobs] = NULL;
+  for(int iobs=0; iobs<nObservables; iobs++) {
+    delete histo02[iobs];
+    histo02[iobs] = NULL;
   }
 
   delete eTot12;      eTot12 = NULL;
@@ -198,10 +208,6 @@ void MonitorFrame::Exit() {
 
 	if(writer) {
 	  delete writer;
-	}
-
-	if(reader) {
-	  delete reader;
 	}
 
 	if(fifo) {
@@ -226,16 +232,13 @@ void MonitorFrame::Start() {
     return;
   }
 
-  fifo = new DRS4_data::DRS4_fifo;
-  writer(drs, fifo);
-  reader(fifo, drs);
-
-  writer->start(nEvents);
-  while (!writer->isRunning()) { std::this_thread::sleep_for(std::chrono::milliseconds(10)); };
+  fifo->Discard();
+  writer = new DRS4_writer(drs, fifo);
 
   /*** Clear histograms ***/
-  for(kObservables iobs=0; iobs<nObservables; iobs++) {
-    histo[iobs]->Reset();
+  for(int iobs=0; iobs<nObservables; iobs++) {
+    histo01[iobs]->Reset();
+    histo02[iobs]->Reset();
   }
   eTot12->Reset();
   ePrompt12->Reset();
@@ -244,7 +247,7 @@ void MonitorFrame::Start() {
 
 
 
-	filename(basename);
+	filename = basename;
 	timestamped=false;
 
 
@@ -254,44 +257,104 @@ void MonitorFrame::Start() {
 	timeLastSave = 0;
 
 
-	// FIXME: The monitor frame should BE the reader
-  int readerState = reader->run(filename.Data(), writer);
-  if ( readerState < 0 ) {
-    writer->stop();
-    std::cout << "MonitorFrame::Start() - ERROR Starting reader." << std::endl;
-    return;
-  }
+	/*** Start writer ***/
+  writer->start(nEvtMax);
+  while (!writer->isRunning()) { std::this_thread::sleep_for(std::chrono::milliseconds(10)); };
 
+  /*** Start monitor ***/
 	Run();
 }
 
-void MonitorFrame::Run() {
+int MonitorFrame::Run() {
 
-	while (iEvt < nEvents) {
+  file = new std::ofstream(filename, std::ios_base::binary & std::ios_base::trunc) ;
 
-		int nBulkReadAttempts = 0;
+  if( file->fail() ) {
+    std::cout << "ERROR: Cannot open file " << filename << " for writing.\n";
+    writer->stop();
+    return -1;
+  }
 
-		int nbytes = -1;
-		while(nbytes < 0)
-		{
-			gClient->ProcessEventsFor(this);
-			if(!cc->DAQisRunning()) return;
+  std::cout << "Starting Monitor frame.\n";
 
-			nbytes = FillBuffer();
-			nBulkReadAttempts++;
+  /*** Write file header and time calibration ***/
+  std::cout << "Writing headers and time calibration." << std::endl;
 
-/*			if (nBulkReadAttempts > nBulkReadAttLimit) {
-				std::cout << "No data from buffer in " << std::dec <<
-						nBulkReadAttLimit << " attempts. Stopping.\n";
-				Stop();
-			}*/
-		}
-		if (nbytes > 0) { // Leaving the check in for future possibilities
-			nBulkReadAttempts = 0;
-			HandleData();
-		}
+  // Fixme: Need to fill the headers first.
+  file->write(reinterpret_cast<const char*>(&headers->fheader), 4);
+  file->write(reinterpret_cast<const char*>(&DRS4_data::THEADER), 4);
 
-	}
+  for(int iboard=0; iboard<headers->chTimes.size(); iboard++) {
+    // Write board header
+    file->write(headers->bheaders.at(iboard)->bn, 2);
+    file->write(reinterpret_cast<const char*>(&(headers->bheaders.at(iboard)->board_serial_number)), 2);
+    // Write time calibration
+    for (int ichan=0; ichan<headers->chTimes.at(iboard).size(); ichan++) {
+      file->write(reinterpret_cast<const char*>(headers->chTimes.at(iboard).at(ichan)), sizeof(DRS4_data::ChannelTime) );
+    }
+  } // End loop over boards
+  std::cout << "Done writing headers." << std::endl;
+
+
+  // Time calibrations
+  const bool tCalibrated = true; // Whether time points should come calibrated
+  const bool tRotated = true;    // Whether time points should come rotated
+  // Voltage calibrations
+  const bool applyResponseCalib = true;  // Remove noise and offset variations
+  const bool adjustToClock = false;      // Extra rotation of amplitudes in the calibration step - SET TO FALSE !
+  const bool adjustToClockForFile = false;
+  const bool applyOffsetCalib = false;   // ?
+
+  iEvtProcessed=0;
+
+  while(!f_stop) {
+
+    gClient->ProcessEventsFor(this);
+    rawWave = fifo->read();
+
+    if(rawWave) {
+      iEvtSerial = rawWave->header.getEventNumber();
+      std::cout << "Read event #" << iEvtSerial << std::endl;
+      std::cout << "Trigger cell is " << rawWave->header.getTriggerCell() << std::endl;
+      event = new DRS4_data::Event(iEvtSerial, rawWave->header, drs);
+
+      for(int iboard=0; iboard<headers->chTimes.size(); iboard++) {
+        DRSBoard *b = drs->GetBoard(iboard);
+        for (unsigned char ichan=0 ; ichan<4 ; ichan++) {
+
+          /* decode waveform (Y) arrays in mV */
+          // Do not use DRSBoard::GetTriggerCell()
+          // - it shows the CURRENT trigger cell, not that corresponding to the waveform
+          std::cout << "Decoding waveform in chan #" << int(ichan)+1 << std::endl;
+          b->GetWave(rawWave->eventWaves.at(iboard)->waveforms, 0, ichan*2, (short*)event->getChData(iboard, ichan)->data,
+              applyResponseCalib, int(rawWave->header.getTriggerCell()), -1, adjustToClockForFile, 0, applyOffsetCalib);
+
+          float time[kNumberOfBins];
+          b->GetTime(0, ichan*2, int(rawWave->header.getTriggerCell()), time, tCalibrated, tRotated);
+          float amplitude[kNumberOfBins];
+          b->GetWave(rawWave->eventWaves.at(iboard)->waveforms, 0, ichan*2, amplitude, applyResponseCalib,
+              int(rawWave->header.getTriggerCell()), -1, adjustToClock, 0, applyOffsetCalib);
+
+        } // Loop over the channels
+
+
+      }
+      event->write(file);
+      HandleData();
+      delete event;
+      iEvtProcessed++;
+    } // If rawWave (fifo not empty)
+    else {
+      if(f_stopWhenEmpty || !writer->isRunning()) {
+        f_stop = true;
+      }
+      else {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      } // if(f_stopWhenEmpty)
+    } // if(rawWave)
+  } // !f_stop
+
+  return 0;
 
 	Stop();
 
@@ -299,30 +362,18 @@ void MonitorFrame::Run() {
 
 
 void MonitorFrame::Stop() {
-	if(!cc->DAQisRunning()) { return; }
 
 	std::cout << "\n\nStopping.\n";
+  f_stop = true;
 	timer.Stop();
 	DoDraw(true);
-	if ( cc->DAQisRunning() ) {
-		short nbytes = cc->StopDAQ(buffer, bufferSize);
-    std::cout << "Drained " << nbytes << " bytes from buffer.\n";
-//    std::cout << "buffer[0] reports " << buffer[0] << " events.\n";
-    int nevents = ((nbytes/2)-2)/(nChanADC + nChanTDC + 1);
-    buffer[0] = nevents;
-    std::cout << "Wrote number of events N=" << nevents << " to buffer header.\n";
-    if (nbytes > 0) { // Leaving the check in for future possibilities
-      HandleData();
-    }
-		if (nbytes < 0) std::cout << "Error stopping DAQ.\n";
-	}
 
 	delete rate;
 	rate = NULL;
 
-	std::cout << "Events processed: " << iEvt << "\n";
+	std::cout << "Events processed: " << iEvtProcessed << "\n";
 	std::cout << Form("Elapsed time: %6.2f s.\n", timer.RealTime());
-	std::cout << Form("Counting rate: %6.2f events/s \n", float(iEvt)/timer.RealTime());
+	std::cout << Form("Event rate: %6.2f events/s \n", float(iEvtProcessed)/timer.RealTime());
 
 	TTimeStamp ts(std::time(NULL), 0);
 	filename = basename;
@@ -336,93 +387,27 @@ void MonitorFrame::Stop() {
 
 void MonitorFrame::HandleData()
 {
-	short newEvents = buffer[0];
-	unsigned int idxEvent = 1;
 
-	for (int i=0; i<newEvents; i++)
-	{
-		unsigned short lenEvt = buffer[idxEvent];
-/*		if( lenEvt < 1 ) {
-			std::cout << "Event length " << lenEvt << "; Event " << iEvt+i << " !\n";
-			continue;
-		}
-*/
-		for(int i=0; i<nChanADC; i++) { adc[i]=0; }
-		for(int i=0; i<nChanTDC; i++) { tdc[i]=0; }
-
-		unsigned short idxData = idxEvent+1;
-		unsigned short lastADC = idxEvent + TMath::Min(nChanADC, lenEvt);
-		for(int i=0; i<nChanADC && idxData <= lastADC; i++, idxData++) {
-			adc[i] = buffer[idxData]%4096;
-			histo_adc[i]->Fill(adc[i]);
-		}
-		unsigned short lastTDC = lastADC + TMath::Min(nChanTDC, lenEvt);
-		for(int i=0; i<nChanTDC && idxData <= lastTDC; i++, idxData++) {
-			tdc[i] = buffer[idxData];
-			histo_tdc[i]->Fill(tdc[i]);
-		}
-
-		events->Fill();
-
-		adc12->Fill(adc[0], adc[1]);
-		tdc12->Fill(tdc[0], tdc[1]);
-		adc34->Fill(adc[2], adc[3]);
-		tdc34->Fill(tdc[2], tdc[3]);
-
-		idxEvent += lenEvt+1;
-		iEvt++;
-	} // End buffer
-
-	timer.Stop();
-
-	rate->Push(iEvt, timer.RealTime());
-
-	itRed++;
-	if(itRed >= tRed) { itRed=0; DoDraw(true); }
-	else { DoDraw(); }
-
-	bufferFresh = false;
-
-	if (timer.RealTime() - timeLastSave> autosavePeriod) {
-		AutoSave();
-	}
-	timer.Continue();
 
 } // HandleData()
 
 
 
 
-int MonitorFrame::FillBuffer() {
-//	std::cout << "Reading CC-USB.\n";
-	int nbytes = cc->GetData(buffer, bufferSize);
-	bufferFresh=true;
-	return nbytes;
-}
-
 
 void MonitorFrame::DoDraw(bool all) {
 // Draws function graphics in randomly chosen interval
 
+  fCanvas01->Paint();
+  fCanvas02->Paint();
+  fCanvas01->Update();
+  fCanvas02->Update();
 	if(all) {
-		fCanvas01->Paint();
-		fScin->Paint();
-		std::cout << std::dec << "Events: " << iEvt << "\r" << std::flush;
+    fCanvas2D->Paint();
+    fCanvas2D->Update();
 	}
-	else {
-		fCanvas01->GetPad(1)->Paint();
-		fCanvas01->GetPad(2)->Paint();
-		fCanvas01->GetPad(4)->Paint();
-		fCanvas01->GetPad(5)->Paint();
-		fScin->GetPad(1)->Paint();
-		fScin->GetPad(2)->Paint();
-		fScin->GetPad(4)->Paint();
-		fScin->GetPad(5)->Paint();
-	}
-	fCanvas01->Update();
-	fScin->Update();
 
-	nEvtT->SetText(Form("%-10i", iEvt));
+	nEvtT->SetText(Form("%-10i", iEvtProcessed));
 	rateT->SetText(Form("%5.3g evt/s", rate->Get()));
 	timer.Continue();
 
@@ -437,7 +422,7 @@ void MonitorFrame::AutoSave() {
 	filename += ts.GetTime(0);
 	timestamped = true;
 	Save();
-	filename(basename);
+	filename = basename;
 	timestamped=false;
 }
 
@@ -460,14 +445,16 @@ void MonitorFrame::Save() {
 //			gApplication->Terminate(0);
 	}
 
-	events->CloneTree()->Write();
-	for(int i=0; i<nChanADC; i++) { histo_adc[i]->Clone()->Write(); }
-	for(int i=0; i<nChanTDC; i++) { histo_tdc[i]->Clone()->Write(); }
+  for(int iobs=0; iobs<nObservables; iobs++) {
+    histo01[iobs]->Clone()->Write();
+    histo02[iobs]->Clone()->Write();
+  }
 
-	adc12->Clone()->Write();
-	tdc12->Clone()->Write();
-	adc34->Clone()->Write();
-	tdc34->Clone()->Write();
+  eTot12->Clone()->Write();
+  ePrompt12->Clone()->Write();
+  time12->Clone()->Write();
+  time34->Clone()->Write();
+
 	output.Close();
 	std::cout << "\nSaved data in " << rootfilename.Data() << "\n";
 	timeLastSave = timer.RealTime();
@@ -476,7 +463,7 @@ void MonitorFrame::Save() {
 
 
 void MonitorFrame::ExportText() {
-
+/*
 	if ( !timestamped ) {
 		TTimeStamp ts(std::time(NULL), 0);
 		filename = basename;
@@ -495,18 +482,19 @@ void MonitorFrame::ExportText() {
 	}
 
 
-	for (int i=0; i<nChanADC; i++) { exportfile << Form("  ADC%i  ", i+1); }
-	for (int i=0; i<nChanTDC; i++) { exportfile << Form("  TDC%i  ", i+1); }
+  for (kObservables i=0; i<nObservables; i++) { exportfile << Form("  %s(1)  ", obs->Name(i)); }
+  for (kObservables i=0; i<nObservables; i++) { exportfile << Form("  %s(2)  ", obs->Name(i)); }
 	exportfile << "\n";
 	for (int iEvt=0; iEvt<events->GetEntries(); iEvt++) {
 		events->GetEvent(iEvt);
-		for (int i=0; i<nChanADC; i++) { exportfile << Form("%8d", adc[i]); }
-		for (int i=0; i<nChanTDC; i++) { exportfile << Form("%8d", tdc[i]); }
+		for (kObservables i=0; i<nObservables; i++) { exportfile << Form("%8.3f", ???); }
+		for (kObservables i=0; i<nObservables; i++) { exportfile << Form("%8.3f", ???); }
 		exportfile << "\n";
 	}
 	exportfile.close();
 
 	std::cout << "\nSaved text data in " << textfilename.Data() << "\n";
+	*/
 }
 
 

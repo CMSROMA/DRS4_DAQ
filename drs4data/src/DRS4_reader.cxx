@@ -78,7 +78,7 @@ void DRS4_reader::stopWhenEmpty() {
 }
 
 
-int DRS4_reader::run(const char *filename, DRS4_writer *writer) {
+int DRS4_reader::run(const char *filename, DRS4_writer * const writer) {
 
   file = new std::ofstream(filename, std::ios_base::binary & std::ios_base::trunc) ;
 

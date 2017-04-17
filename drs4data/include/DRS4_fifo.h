@@ -49,6 +49,8 @@ namespace DRS4_data {
     // Push the pointer. The caller should have already reserved the memory.
     int write(RawEvent*) ;
 
+    void Discard();
+
 
   private:
     std::queue<RawEvent*> eventWaves;

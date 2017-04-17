@@ -1,7 +1,7 @@
 ########################################################
 # cmake file for building drs4daq
 # @author Strahinja Lukic
-CMAKE_MINIMUM_REQUIRED( VERSION 2.8 FATAL_ERROR )
+CMAKE_MINIMUM_REQUIRED( VERSION 3.0 FATAL_ERROR )
 ########################################################
 
 # project name
@@ -31,11 +31,12 @@ SET( CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmakemod
 FIND_PACKAGE( DRS4 REQUIRED )
 FIND_PACKAGE( LIBUSB10 REQUIRED )
 FIND_PACKAGE( WXWidgets REQUIRED )
-FIND_PACKAGE( ROOT REQUIRED )
+FIND_PACKAGE( ROOT REQUIRED Gui )
 
 SET( CMAKE_C_FLAGS  "-D${DOS} -DHAVE_USB -DHAVE_LIBUSB10 -DUSE_DRS_MUTEX ${WXFLAGS} ${CMAKE_C_FLAGS}" )
 SET( CMAKE_CXX_FLAGS  "-w -ansi -pedantic -pthread -std=c++11 -D${DOS} -DHAVE_USB -DHAVE_LIBUSB10 -DUSE_DRS_MUTEX ${WXFLAGS} ${CMAKE_CXX_FLAGS}" )
 ####################################################################################################
+
 
 ### SUBDIRECTORIES #####################################
 
@@ -43,6 +44,6 @@ add_subdirectory (drs4data)
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 add_subdirectory (drs4)
 add_subdirectory (drs4daq)
+add_subdirectory (drs4monitor)
 
-include_directories( ${CMAKE_CURRENT_SOURCE_DIR}/drs4data/include ${DRS4_INCLUDE_DIRS} )
 

@@ -8,6 +8,8 @@
 #ifndef MONITORFRAME_HH_
 #define MONITORFRAME_HH_
 
+#include <queue>
+
 #include <TGFrame.h>
 //#include <TRootEmbeddedCanvas.h>
 //#include "TTree.h"
@@ -24,9 +26,18 @@ class TRootCanvas;
 class TH1F;
 class TH2F;
 
-class DRS4_fifo;
+using namespace DRS4_data;
+
+class DRS;
 class DRS4_writer;
-class DRS4_reader;
+namespace DRS4_data {
+  class DRS4_fifo;
+  //class DRS4_data::DRS4_reader;
+  class RawEvent;
+  class Event;
+  class DRSHeaders;
+  class Observables;
+}
 
 class config;
 
@@ -34,7 +45,7 @@ class config;
 class MonitorFrame : public TGMainFrame {
 
 public:
-	  MonitorFrame(const TGWindow*,  const config*,  DRS*);
+	  MonitorFrame(const TGWindow*,  const config*,  DRS* const);
 	  virtual ~MonitorFrame();
 
 	  /*** DAQ and control ***/
@@ -69,6 +80,8 @@ protected:
   TRootCanvas *frCanvas01;
   TCanvas *fCanvas02;
   TRootCanvas *frCanvas02;
+  TCanvas *fCanvas2D;
+  TRootCanvas *frCanvas2D;
 
   const short tRed; // Update frequency reduction factor
 
@@ -78,7 +91,8 @@ protected:
 
   DRS4_data::Observables *obs;
 
-  TH1F *histo[DRS4_data::nObservables];
+  TH1F *histo01[DRS4_data::nObservables];
+  TH1F *histo02[DRS4_data::nObservables];
   TH2F *eTot12;
   TH2F *ePrompt12;
   TH2F *time12;
@@ -99,6 +113,7 @@ protected:
 	  void Push(int, double);
 	  double Get() const { return evtRate; };
 	  const static int rateCountPeriod = 20; // event count for rate calculation is reset every this many events
+
   private:
 	  std::queue<int> rateCounts;
 	  std::queue<double> rateTimes;
@@ -106,17 +121,37 @@ protected:
   } *rate;
 
   DRS *drs;
-  DRS4_fifo *fifo;
+  DRS4_data::DRS4_fifo *fifo;
   DRS4_writer *writer;
-  DRS4_reader *reader;
+
+  DRS4_data::RawEvent *rawWave;
+  DRS4_data::Event *event;
+  DRS4_data::DRSHeaders *headers;
+
+
 #endif /* __CINT__ */
 
+
   /*** Run handling ***/
-  int nEvents;
+  unsigned nEvtMax;
+  unsigned iEvtProcessed; // Number of events processed by the reader
+  unsigned iEvtSerial;    // Serial number reported by the last processed event
+
+  std::ofstream *file;
+
+  bool f_stop;
+  bool f_stopWhenEmpty;
+
+  /* Monitoring */
+
+  float *timePoints;
+  float *amplitudes;
+
+
   int itRed;
   std::ofstream *log;
 
-  void Run();
+  int Run();
   void HandleData();
   void AutoSave();
 

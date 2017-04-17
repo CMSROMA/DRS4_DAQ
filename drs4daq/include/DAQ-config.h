@@ -13,7 +13,7 @@
 
 class config {
 public:
-	config();
+	config(DRS4_data::Observables *);
 	~config();
 
 	static const short stacklen=1024;
@@ -27,6 +27,9 @@ public:
 
 // Options to setup the CC-USB
 	unsigned char trigDelay;  // Trigger delay in ns
+
+private:
+	DRS4_data::Observables *obs;
 
 };
 

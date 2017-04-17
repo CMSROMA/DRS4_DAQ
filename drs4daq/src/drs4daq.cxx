@@ -17,6 +17,7 @@
 #include "MonitorFrame.h"
 
 #include "TApplication.h"
+#include "TGClient.h"
 
 
 int main(int argc, char* argv[]) {
@@ -53,10 +54,6 @@ int main(int argc, char* argv[]) {
   unsigned nEvtMax = -1;
   if (app->Argc() > iarg) nEvtMax = atoi(app->Argv()[iarg]); iarg++;
 
-
-  /*** Data pointers ***/
-  DRS4_data::DRSHeaders *headers = NULL;
-  DRS4_data::DRS4_fifo *fifo = new DRS4_data::DRS4_fifo;
 
   /*
    * We allow more than one board with synchronized triggers.
@@ -121,29 +118,22 @@ int main(int argc, char* argv[]) {
   } // End loop for common configuration
 
 
-  /*** Writer and reader ***/
-
-  std::cout << "Constructing writer." << std::endl;
-  DRS4_writer writer(drs, fifo);
-  // Fixme: Why not design the writer as disposable (lifetime = one run)?
-  // Pro: Safer for the internal thread
-
-  std::cout << "Constructing reader." << std::endl;
-  DRS4_reader reader(fifo, drs);
-
   // Start DAQ
   mb->EnableTcal(5);
   mb->SelectClockSource(0);
 //  writer.setAutoTrigger();
-  writer.start(nEvtMax);
-  while (!writer.isRunning()) { std::this_thread::sleep_for(std::chrono::milliseconds(10)); };
 
-  int readerState = reader.run(datfilename.c_str(), &writer);
-  if ( readerState < 0 ) writer.stop();
+  /*** Main frame ***/
 
-  writer.join();
+  const config* options;
 
-  reader.stopWhenEmpty();
+  std::cout << "Constructing frame." << std::endl;
+  MonitorFrame frame(gClient->GetRoot(), options, drs);
+
+  app->Run();
+  std::cout << "Finished! Press enter to close.\n";
+  std::cin.ignore();
+  return 0;
 
   return 0;
 }
