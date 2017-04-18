@@ -35,7 +35,7 @@ namespace DRS4_data {
   class DRSHeaders;
   class Observables;
 }
-
+class WaveProcessor;
 class config;
 
 
@@ -90,8 +90,7 @@ protected:
 
   DRS4_data::Observables *obs;
 
-  TH1F *histo01[DRS4_data::nObservables];
-  TH1F *histo02[DRS4_data::nObservables];
+  TH1F *histo[2][DRS4_data::nObservables];
   TH2F *eTot12;
   TH2F *ePrompt12;
   TH2F *time12;
@@ -122,6 +121,7 @@ protected:
   DRS *drs;
   DRS4_data::DRS4_fifo *fifo;
   DRS4_writer *writer;
+  WaveProcessor *processor;
 
   DRS4_data::RawEvent *rawWave;
   DRS4_data::Event *event;
@@ -151,7 +151,7 @@ protected:
   std::ofstream *log;
 
   int Run();
-  void HandleData();
+  void FillHistos(Observables *[2]);
   void AutoSave();
 
   void DoDraw(bool all=false);

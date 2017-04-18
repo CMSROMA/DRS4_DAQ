@@ -48,11 +48,10 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
   tRed(opt->_tRed),
   basename("default"), filename("default"), timestamped(false),
   obs(new Observables),
-  eTot12(NULL), ePrompt12(NULL),
-  time12(NULL), time34(NULL),
-  timeLastSave(0),
-  rate(NULL),
-  drs(_drs), fifo(new DRS4_fifo), writer(NULL), rawWave(NULL), event(NULL),
+  eTot12(NULL), ePrompt12(NULL), time12(NULL), time34(NULL),
+  timeLastSave(0),  rate(NULL),
+  drs(_drs), fifo(new DRS4_fifo), writer(NULL), processor(NULL),
+  rawWave(NULL), event(NULL),
   headers(NULL), nEvtMax(10), iEvtSerial(0), iEvtProcessed(0), file(NULL),
   f_stop(false), f_stopWhenEmpty(false),
   timePoints(NULL), amplitudes(NULL),
@@ -62,8 +61,8 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
 
   for(int iobs=0; iobs<nObservables; iobs++) {
     kObservables kobs = static_cast<kObservables>(iobs);
-    histo01[iobs] = new TH1F(Form("h1%d", iobs), Form("%s_{1}; %s_{1} (%s)", obs->Title(kobs), obs->Title(kobs), obs->Unit(kobs)), 100, opt->histolo[iobs], opt->histohi[iobs]);
-    histo02[iobs] = new TH1F(Form("h2%d", iobs), Form("%s_{2}; %s_{2} (%s)", obs->Title(kobs), obs->Title(kobs), obs->Unit(kobs)), 100, opt->histolo[iobs], opt->histohi[iobs]);
+    histo[0][iobs] = new TH1F(Form("h1%d", iobs), Form("%s_{1}; %s_{1} (%s)", obs->Title(kobs), obs->Title(kobs), obs->Unit(kobs)), 100, opt->histolo[iobs], opt->histohi[iobs]);
+    histo[1][iobs] = new TH1F(Form("h2%d", iobs), Form("%s_{2}; %s_{2} (%s)", obs->Title(kobs), obs->Title(kobs), obs->Unit(kobs)), 100, opt->histolo[iobs], opt->histohi[iobs]);
   }
 
   eTot12 = new TH2F("eTot12", Form("eTot2 vs. eTot1; %s_{1} (%s); %s_{2} (%s)", obs->Title(eTot), obs->Unit(eTot), obs->Title(eTot), obs->Unit(eTot)),
@@ -72,9 +71,9 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
   ePrompt12 = new TH2F("ePrompt12", Form("ePrompt2 vs. ePrompt1; %s_{1} (%s); %s_{2} (%s)", obs->Title(ePrompt), obs->Unit(ePrompt), obs->Title(ePrompt), obs->Unit(ePrompt)),
       (opt->histohi[ePrompt]-opt->histolo[ePrompt])/opt->_xRed, opt->histolo[ePrompt], opt->histohi[ePrompt],
       (opt->histohi[ePrompt]-opt->histolo[ePrompt])/opt->_xRed, opt->histolo[ePrompt], opt->histohi[ePrompt]);
-  time12 = new TH2F("time12", Form("t2 vs. t1; %s_{1} (%s); %s_{2} (%s)", obs->Title(tArrival), obs->Unit(tArrival), obs->Title(tArrival), obs->Unit(tArrival)),
-      (opt->histohi[tArrival]-opt->histolo[tArrival])/opt->_xRed, opt->histolo[tArrival], opt->histohi[tArrival],
-      (opt->histohi[tArrival]-opt->histolo[tArrival])/opt->_xRed, opt->histolo[tArrival], opt->histohi[tArrival]);
+  time12 = new TH2F("time12", Form("t2 vs. t1; %s_{1} (%s); %s_{2} (%s)", obs->Title(arrivalTime), obs->Unit(arrivalTime), obs->Title(arrivalTime), obs->Unit(arrivalTime)),
+      (opt->histohi[arrivalTime]-opt->histolo[arrivalTime])/opt->_xRed, opt->histolo[arrivalTime], opt->histohi[arrivalTime],
+      (opt->histohi[arrivalTime]-opt->histolo[arrivalTime])/opt->_xRed, opt->histolo[arrivalTime], opt->histohi[arrivalTime]);
   time34 = new TH2F("time34", "t4 vs. t3; t_{3} (ns); t_{4} (ns)", 100, 0., 100., 100, 0., 100.);
 
 
@@ -97,8 +96,8 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
   fCanvas01->Divide(nx, ny, .002, .002);
   fCanvas02->Divide(nx, ny, .002, .002);
   for( unsigned ih=0; ih<nObservables; ih++) {
-    fCanvas01->cd(1); histo01[ih]->Draw();
-    fCanvas02->cd(1); histo02[ih]->Draw();
+    fCanvas01->cd(1); histo[0][ih]->Draw();
+    fCanvas02->cd(1); histo[1][ih]->Draw();
   }
 
 	fCanvas2D->Divide(2, 2, .002, .002);
@@ -193,8 +192,10 @@ MonitorFrame::~MonitorFrame() {
 	std::cout << "Deleting main frame.\n";
 
   for(int iobs=0; iobs<nObservables; iobs++) {
-    delete histo02[iobs];
-    histo02[iobs] = NULL;
+    delete histo[0][iobs];
+    histo[0][iobs] = NULL;
+    delete histo[1][iobs];
+    histo[1][iobs] = NULL;
   }
 
   delete eTot12;      eTot12 = NULL;
@@ -224,6 +225,8 @@ void MonitorFrame::Exit() {
 
 void MonitorFrame::Start() {
 
+  std::cout << "Starting Monitor frame.\n";
+
   if(!drs) {
     std::cout << "MonitorFrame::Start() - ERROR: DRS object empty." << std::endl;
     return;
@@ -235,6 +238,7 @@ void MonitorFrame::Start() {
   }
 
   fifo->Discard();
+  if(writer) delete writer;
   writer = new DRS4_writer(drs, fifo);
   if(options->triggerSource == 0) {
     writer->setAutoTrigger();
@@ -242,8 +246,8 @@ void MonitorFrame::Start() {
 
   /*** Clear histograms ***/
   for(int iobs=0; iobs<nObservables; iobs++) {
-    histo01[iobs]->Reset();
-    histo02[iobs]->Reset();
+    histo[0][iobs]->Reset();
+    histo[1][iobs]->Reset();
   }
   eTot12->Reset();
   ePrompt12->Reset();
@@ -262,28 +266,16 @@ void MonitorFrame::Start() {
 	timeLastSave = 0;
 
 
-	/*** Start writer ***/
-  writer->start(nEvtMax);
-  while (!writer->isRunning()) { std::this_thread::sleep_for(std::chrono::milliseconds(10)); };
-
-  /*** Start monitor ***/
-	Run();
-}
-
-int MonitorFrame::Run() {
-
   file = new std::ofstream(filename, std::ios_base::binary & std::ios_base::trunc) ;
 
   if( file->fail() ) {
     std::cout << "ERROR: Cannot open file " << filename << " for writing.\n";
-    writer->stop();
-    return -1;
+    delete writer;
+    return;
   }
 
-  std::cout << "Starting Monitor frame.\n";
-
   /*** Write file header and time calibration ***/
-  std::cout << "Writing headers and time calibration." << std::endl;
+  std::cout << "Writing headers and time calibration to file." << std::endl;
 
   // Fixme: Need to fill the headers first.
   file->write(reinterpret_cast<const char*>(&headers->fheader), 4);
@@ -299,6 +291,18 @@ int MonitorFrame::Run() {
     }
   } // End loop over boards
   std::cout << "Done writing headers." << std::endl;
+
+  processor = new WaveProcessor;
+
+	/*** Start writer ***/
+  writer->start(nEvtMax);
+  while (!writer->isRunning()) { std::this_thread::sleep_for(std::chrono::milliseconds(10)); };
+
+  /*** Start monitor ***/
+	Run();
+}
+
+int MonitorFrame::Run() {
 
 
   // Time calibrations
@@ -323,6 +327,8 @@ int MonitorFrame::Run() {
       std::cout << "Trigger cell is " << rawWave->header.getTriggerCell() << std::endl;
       event = new DRS4_data::Event(iEvtSerial, rawWave->header, drs);
 
+      Observables *obs[2] = {NULL, NULL};
+
       for(int iboard=0; iboard<headers->chTimes.size(); iboard++) {
         DRSBoard *b = drs->GetBoard(iboard);
         for (unsigned char ichan=0 ; ichan<4 ; ichan++) {
@@ -340,12 +346,18 @@ int MonitorFrame::Run() {
           b->GetWave(rawWave->eventWaves.at(iboard)->waveforms, 0, ichan*2, amplitude, applyResponseCalib,
               int(rawWave->header.getTriggerCell()), -1, adjustToClock, 0, applyOffsetCalib);
 
+          if (ichan<2) {
+            obs[ichan] = processor->ProcessOnline(time, amplitude, kNumberOfBins);
+          }
+
         } // Loop over the channels
 
 
       }
+
+      FillHistos(obs);
+
       event->write(file);
-      HandleData();
       delete event;
       iEvtProcessed++;
     } // If rawWave (fifo not empty)
@@ -390,11 +402,22 @@ void MonitorFrame::Stop() {
 }
 
 
-void MonitorFrame::HandleData()
+void MonitorFrame::FillHistos(Observables *obs[2])
 {
 
+  for(unsigned ichan=0; ichan<2; ichan++) {
+    for(int iobs=0; iobs<nObservables; iobs++) {
+      histo[ichan][iobs]->Fill(obs[ichan]->Value(static_cast<kObservables>(iobs)));
+    }
+  }
 
-} // HandleData()
+  eTot12->Fill(obs[0]->Value(eTot), obs[1]->Value(eTot));
+  ePrompt12->Fill(obs[0]->Value(ePrompt), obs[1]->Value(ePrompt));
+  time12->Fill(obs[0]->Value(arrivalTime), obs[1]->Value(arrivalTime));
+
+  // TODO: calculate and process t3 and t4
+
+} // FillHistos()
 
 
 
@@ -451,8 +474,8 @@ void MonitorFrame::Save() {
 	}
 
   for(int iobs=0; iobs<nObservables; iobs++) {
-    histo01[iobs]->Clone()->Write();
-    histo02[iobs]->Clone()->Write();
+    histo[0][iobs]->Clone()->Write();
+    histo[1][iobs]->Clone()->Write();
   }
 
   eTot12->Clone()->Write();

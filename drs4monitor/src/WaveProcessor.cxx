@@ -1,6 +1,16 @@
 #include "WaveProcessor.h"
 
-WaveProcessor::WaveProcessor() {aligned=false; alocated=false; baseLineAVG=BASELINE ; baseLineCNT=0;}
+using namespace DRS4_data;
+
+WaveProcessor::WaveProcessor() :
+    triggerHeight(0), delay(0), eventID(0), baseLineAVG(BASELINE), baseLineCNT(0),
+    alocated(false), aligned(false), No_of_Ch(0),
+    TempShapeCh1(NULL),
+    TempShapeCh2(NULL),
+    TempShapeCh3(NULL),
+    TempShapeCh4(NULL),
+    RawTempShape(NULL)
+{}
 
 WaveProcessor::~WaveProcessor(){
 /*	
@@ -331,45 +341,42 @@ WaveformParam output; //how many parameters to be returned
 	return output;
 }
 
-WaveformOnline WaveProcessor::ProcessOnline(Float_t* RawTimeArr, Float_t* RawVoltArr, Int_t RawArrLength){
-	WaveformOnline output;
+Observables* WaveProcessor::ProcessOnline(Float_t* RawTimeArr, Float_t* RawVoltArr, Int_t RawArrLength){
+
+  Observables *output = new Observables;
 	int i;
 	char histTitle[30];
 	
-	if (RawTempShape!=0) RawTempShape->Delete();
-
-	RawTempShape = new TH1F("RawTempShape", "RawTempShape", RawArrLength - 1, RawTimeArr); // nonequidistand histogram
+	output->hist = new TH1F("RawTempShape", "RawTempShape", RawArrLength - 1, RawTimeArr); // nonequidistand histogram
 	
 	//for(i=0; i<RawArrLength; i++) RawTempShape -> SetBinContent((i+RawTrigCell)%RawArrLength, RawVoltArr[i]);
-	for (i=0; i<RawArrLength; i++) RawTempShape -> Fill(RawTimeArr[i], RawVoltArr[i]);
+	for (i=0; i<RawArrLength; i++) output->hist -> Fill(RawTimeArr[i], RawVoltArr[i]);
 	
-	int ArrivalTimeBin = RawTempShape->FindFirstBinAbove(triggerHeight); // bin should be transformed to ns according to axis
+	int ArrivalTimeBin = output->hist->FindFirstBinAbove(triggerHeight); // bin should be transformed to ns according to axis
 	if (ArrivalTimeBin==-1) return output; // I guess will be 0 and the event ignored
 	
-	TH1F *tmpHist = (TH1F*) RawTempShape->Clone(); // baseLine should be subtracted in order to get time of 90% energy deposition of real signal (baseLine excluded)
-	for (i=0; i<RawArrLength; i++) tmpHist->SetBinContent(i, (tmpHist->GetBinContent(i)-output.baseLine)); 
+	// baseLine must be calculated first.
+	output->Value(baseLine) = output->hist->Integral(0, output->hist->FindBin(35.-delay), "width") / (35.-delay) ;
+	// baseline subtraction
+	TH1F *tmpHist = (TH1F*) output->hist->Clone(); // baseLine should be subtracted in order to get time of 90% energy deposition of real signal (baseLine excluded)
+	for (i=0; i<RawArrLength; i++) tmpHist->SetBinContent(i, (tmpHist->GetBinContent(i)-output->Value(baseLine)));
+
 	TH1* hcumul = tmpHist->GetCumulative();
 	hcumul->Scale(1/tmpHist->Integral()); // normalize cumulative histogram to 1
 	
 		
-	output.arrivalTime = RawTempShape->GetXaxis()->GetBinCenter(ArrivalTimeBin);
-	output.baseLine = RawTempShape->Integral(0, RawTempShape->FindBin(35.-delay), "width") / (35.-delay) ;
-	output.Etot = RawTempShape->Integral(ArrivalTimeBin, RawTempShape->GetXaxis()->GetNbins(), "width") 
-				- output.baseLine*(RawTempShape->GetXaxis()->GetBinUpEdge(1023)- output.arrivalTime);//(35.-delay));
-	output.maxVal  = RawTempShape->GetMaximum();
-	output.T90 = RawTempShape->GetXaxis()->GetBinCenter(hcumul->FindFirstBinAbove(0.9))-output.arrivalTime; 
-	output.T70 = RawTempShape->GetXaxis()->GetBinCenter(hcumul->FindFirstBinAbove(0.7))-output.arrivalTime; 
-	output.T50 = RawTempShape->GetXaxis()->GetBinCenter(hcumul->FindFirstBinAbove(0.5))-output.arrivalTime;	
+	output->Value(arrivalTime) = output->hist->GetXaxis()->GetBinCenter(ArrivalTimeBin);
+	output->Value(eTot) = output->hist->Integral(ArrivalTimeBin, output->hist->GetXaxis()->GetNbins(), "width")
+				- output->Value(baseLine)*(output->hist->GetXaxis()->GetBinUpEdge(1023)- output->Value(arrivalTime));//(35.-delay));
+	output->Value(maxVal) = output->hist->GetMaximum();
+	output->Value(dt90) = output->hist->GetXaxis()->GetBinCenter(hcumul->FindFirstBinAbove(0.9))-output->Value(arrivalTime);
+	output->Value(dt70) = output->hist->GetXaxis()->GetBinCenter(hcumul->FindFirstBinAbove(0.7))-output->Value(arrivalTime);
+	output->Value(dt50) = output->hist->GetXaxis()->GetBinCenter(hcumul->FindFirstBinAbove(0.5))-output->Value(arrivalTime);
 	
 	
-	
-	output.Eof10ns = RawTempShape->Integral(ArrivalTimeBin, RawTempShape->FindBin(output.arrivalTime + 10.), "width") 
-	- output.baseLine*10. ; // Integral of first 10 ns of signal
-	
+	output->Value(ePrompt) = output->hist->Integral(ArrivalTimeBin, output->hist->FindBin(output->Value(arrivalTime) + 10.), "width")
+	- output->Value(baseLine)*10. ; // Integral of first 10 ns of signal
 
-	
-	output.hist = RawTempShape;
-	
 	tmpHist->Delete();
 
 	return output;
