@@ -90,6 +90,7 @@ int main(int argc, char* argv[]) {
     DRSBoard *b = drs->GetBoard(iboard);
 
     /* initialize board */
+    std::cout << "Initializing." << std::endl;
     b->Init();
 
     /* select external reference clock for slave modules */

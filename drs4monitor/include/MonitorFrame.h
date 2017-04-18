@@ -42,35 +42,36 @@ class config;
 class MonitorFrame : public TGMainFrame {
 
 public:
-	  MonitorFrame(const TGWindow*,  config* const,  DRS* const);
-	  virtual ~MonitorFrame();
+    MonitorFrame(const TGWindow*,  config* const,  DRS* const);
+    virtual ~MonitorFrame();
 
-	  /*** DAQ and control ***/
-	  void Start();      //*SLOT*
-	  void Stop();       //*SLOT*
-	  void Save(); 		   //*SLOT*
-	  void ExportText(); //*SLOT*
-	  void Exit();       //*SLOT*
-	  
-	  ClassDef(MonitorFrame,0)
+    /*** DAQ and control ***/
+    void Start();      //*SLOT*
+    void Stop();       //*SLOT*
+    void HardStop();   //*SLOT*
+    void Save();        //*SLOT*
+    void ExportText(); //*SLOT*
+    void Exit();       //*SLOT*
 
-//	  const static int autosavePeriod = 3600; // Autosave period in s
+    ClassDef(MonitorFrame,0)
 
-	  const struct histo_limits {
-	  	short histolo[DRS4_data::nObservables];
-	  	short histohi[DRS4_data::nObservables];
-	  	histo_limits(const short *_lo, const short *_hi) {
-	  		for (int i=0; i<DRS4_data::nObservables; i++) { histolo[i] = _lo[i]; histolo[i] = _hi[i]; }
-	  	}
-	  	~histo_limits() {};
-	  } limits;
+//    const static int autosavePeriod = 3600; // Autosave period in s
+
+    const struct histo_limits {
+      short histolo[DRS4_data::nObservables];
+      short histohi[DRS4_data::nObservables];
+      histo_limits(const short *_lo, const short *_hi) {
+        for (int i=0; i<DRS4_data::nObservables; i++) { histolo[i] = _lo[i]; histolo[i] = _hi[i]; }
+      }
+      ~histo_limits() {};
+    } limits;
 
 
 
 protected:
   /*** Display ***/
 
-	config *options;
+  config *options;
 
   TGLabel *nEvtT;
   TGLabel *rateT;
@@ -81,6 +82,8 @@ protected:
   TRootCanvas *frCanvas02;
   TCanvas *fCanvas2D;
   TRootCanvas *frCanvas2D;
+  TCanvas *fCanvasOsc;
+  TRootCanvas *frCanvasOsc;
 
   const short tRed; // Update frequency reduction factor
 
@@ -106,20 +109,20 @@ protected:
 
   class RateEstimator {
   public:
-	  RateEstimator() : evtRate(0) { rateCounts.push(0); rateTimes.push(0.); };
-	  ~RateEstimator() {};
-	  void Push(int, double);
-	  double Get() const { return evtRate; };
-	  const static int rateCountPeriod = 20; // event count for rate calculation is reset every this many events
+    RateEstimator() : evtRate(0) { rateCounts.push(0); rateTimes.push(0.); };
+    ~RateEstimator() {};
+    void Push(int, double);
+    double Get() const { return evtRate; };
+    const static int rateCountPeriod = 20; // event count for rate calculation is reset every this many events
 
   private:
-	  std::queue<int> rateCounts;
-	  std::queue<double> rateTimes;
-	  double evtRate;
+    std::queue<int> rateCounts;
+    std::queue<double> rateTimes;
+    double evtRate;
   } *rate;
 
   DRS *drs;
-  DRS4_data::DRS4_fifo *fifo;
+  DRS4_fifo *fifo;
   DRS4_writer *writer;
   WaveProcessor *processor;
 
@@ -140,6 +143,7 @@ protected:
 
   bool f_stop;
   bool f_stopWhenEmpty;
+  bool f_running;
 
   /* Monitoring */
 

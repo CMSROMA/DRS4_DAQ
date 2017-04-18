@@ -13,6 +13,8 @@
 #include <iostream>
 #include "math.h"
 
+
+
 namespace DRS4_data {
 
 
@@ -174,19 +176,18 @@ namespace DRS4_data {
     if(!file) return -1;
     if(!file->good()) return -2;
 
-    std::cout << "Storing event to file." << std::endl;
+//    std::cout << "Storing event to file." << std::endl;
 
     header.write(file);
-    std::cout << "Stored event header." << std::endl;
+//    std::cout << "Stored event header." << std::endl;
 
     for(unsigned iboard=0; iboard<bheaders.size(); iboard++) {
 
-      std::cout << "Storing board #" << iboard << "." << std::endl;
+ //     std::cout << "Storing board header #" << iboard << "." << std::endl;
       file->write( reinterpret_cast<char*>(bheaders.at(iboard)), sizeof(BHEADER) );
-      std::cout << "Stored board header." << std::endl;
       file->write( reinterpret_cast<const char*>(tcells.at(iboard)), sizeof(TCHEADER) );
 
-      std::cout << "Storing data." << std::endl;
+ //     std::cout << "Storing data." << std::endl;
       for (unsigned ichan=0; ichan<chData.at(iboard).size(); ichan++) {
         file->write( reinterpret_cast<const char*>(chData.at(iboard).at(ichan)), sizeof(ChannelData) );
       } // loop over channels
@@ -222,6 +223,42 @@ namespace DRS4_data {
         delete chTimes.at(iboard).at(ichan);
       }
     }
+  }
+
+  DRSHeaders * DRSHeaders::MakeDRSHeaders(DRS* drs) {
+    // Objects for the initialization of the DRS headers
+    DRS4_data::FHEADER fheader(drs->GetBoard(0)->GetDRSType());
+    std::vector<DRS4_data::BHEADER*> bheaders;
+    DRS4_data::ChannelTimes *chTimes = new DRS4_data::ChannelTimes;
+
+    /*** Get board serial numbers and time bins ***/
+    for (int iboard=0; iboard<drs->GetNumberOfBoards(); iboard++) {
+
+      std::cout << "DRS4_reader::DRS4_reader() - Reading board #" << iboard << std::endl;
+
+      DRSBoard *b = drs->GetBoard(iboard);
+
+      // Board serial numbers
+      DRS4_data::BHEADER *bhdr = new DRS4_data::BHEADER(b->GetBoardSerialNumber());
+      bheaders.push_back(bhdr);
+
+      std::vector<DRS4_data::ChannelTime*> chTimeVec;
+
+      for (int ichan=0 ; ichan<4 ; ichan++) {
+
+        DRS4_data::ChannelTime *ct = new DRS4_data::ChannelTime(ichan+1);
+        // Get time bins
+        b->GetTime(iboard, ichan*2, b->GetTriggerCell(iboard), ct->tbins);
+
+        chTimeVec.push_back(ct);
+      } // End loop over channels
+
+      chTimes->push_back(chTimeVec);
+
+    } // End loop over boards
+
+    return new DRS4_data::DRSHeaders(fheader, bheaders, chTimes);
+
   }
 
 }

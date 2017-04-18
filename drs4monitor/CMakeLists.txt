@@ -1,8 +1,7 @@
-
-message (STATUS "ROOT_USE_FILE: ${ROOT_USE_FILE}" )
 include(${ROOT_USE_FILE})
 include_directories( include ../drs4data/include )
-ROOT_GENERATE_DICTIONARY( monitorDict MonitorFrame.h LINKDEF LinkDef.hh OPTIONS ${CMAKE_CXX_FLAGS} )
+ROOT_GENERATE_DICTIONARY( monitorDict MonitorFrame.h LINKDEF LinkDef.hh )
+#OPTIONS ${ROOT_CXX_FLAGS}
 
 add_library ( drs4monitor SHARED src/WaveProcessor.cxx src/MonitorFrame.cxx monitorDict.cxx )
 

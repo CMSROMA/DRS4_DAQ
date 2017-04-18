@@ -32,6 +32,7 @@ public:
 
   void setAutoTrigger(bool at=true) { f_autoTrigger = at; }
 
+  unsigned NEvents() const { return iEvent; }
 
 private:
 

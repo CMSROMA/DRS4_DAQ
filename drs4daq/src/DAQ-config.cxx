@@ -14,34 +14,40 @@
 using namespace DRS4_data;
 
 config::config(Observables *_obs) :
-	_w(600), _h(350),
-	_tRed(10), _xRed(2), _yRed(2),
-	sampleRate(5), inputRange(0), triggerLevel(-0.05),
-	triggerNegative(true), trigDelay(150), triggerSource(1),
-	obs(_obs)
+  nEvtMax(10),
+  _w(600), _h(350),
+  _tRed(10), _xRed(2), _yRed(2),
+  sampleRate(5), inputRange(0), triggerLevel(-0.05),
+  triggerNegative(true), trigDelay(150), triggerSource(1),
+  obs(_obs)
 {
-	for(int i=0; i<nObservables; i++) {
-		histolo[i] = 0; histohi[i] = 400;
-	}
+  for(int i=0; i<nObservables; i++) {
+    histolo[i] = 0; histohi[i] = 400;
+  }
 }
 
 config::~config() { }
 
 
 int config::DumpOptions() const {
-	std::cout << "\nDump of the display configuration:\n\n";
-	std::cout << "Frame dimensions: " << _w << " x " << _h << std::endl;
-	std::cout << "Histogram ranges: \n";
-	for (int i=0; i<nObservables; i++) {
-		std::cout << Form("%s: ", obs->Name(static_cast<kObservables>(i))) << histolo[i] << " - " << histohi[i] << std::endl;
-	}
 
-	std::cout << "\nDump of the DAQ configuration:\n\n";
-  std::cout << "Sample rate: " << (short)sampleRate <<  std::endl;
-  std::cout << "Input range center: " << (short)inputRange <<  std::endl;
-  std::cout << "Trigger level: " << (short)triggerLevel <<  std::endl;
+  std::cout << "\nDump of the run parameters:\n\n";
+  std::cout << "Maximum number of events: " << nEvtMax << std::endl;
+
+  std::cout << "\nDump of the display configuration:\n\n";
+  std::cout << "Frame dimensions: " << _w << " x " << _h << std::endl;
+  std::cout << "Histogram ranges: \n";
+  for (int i=0; i<nObservables; i++) {
+    std::cout << Form("%s: ", obs->Name(static_cast<kObservables>(i))) << histolo[i] << " - " << histohi[i] << std::endl;
+  }
+  std::cout << "Reduction: x(" << _xRed << "X), y(" << _yRed << "X), t(" << _tRed << "X).\n";
+
+  std::cout << "\nDump of the DAQ configuration:\n\n";
+  std::cout << "Sample rate: " << sampleRate <<  std::endl;
+  std::cout << "Input range center: " << inputRange <<  std::endl;
+  std::cout << "Trigger level: " << triggerLevel <<  std::endl;
   std::cout << "Trigger slope: " << (triggerNegative ? "negative" : "positive") <<  std::endl;
-  std::cout << "Trigger delay: " << (short)trigDelay <<  std::endl;
+  std::cout << "Trigger delay: " << (int)trigDelay <<  std::endl;
   std::cout << "Trigger source: ";
   switch(triggerSource) {
   case 1:
@@ -67,46 +73,61 @@ int config::DumpOptions() const {
     break;
   }
 
-	return 0;
+  return 0;
 }
 
 int config::ParseOptions(std::ifstream *input)
 {
-	const TRegexp number_patt("[' ''-''+'][0-9]+");
-	TString line;
-	while(!input->eof()) {
-		line.ReadLine(*input);
-//		std::cout << line.Data() << "\n";
+  const TRegexp number_patt("[-+ ][0-9]*[.]?[0-9]+");
+  TString line;
 
-		if(line.BeginsWith("#") || line.BeginsWith("!")) continue;
+  while(!input->eof()) {
 
-		/**** Display appearance and behaviour ****/
+    line.ReadLine(*input);
+//    std::cout << line.Data() << "\n";
 
-		if(line.Contains("window", TString::kIgnoreCase)) {
-			TSubString wid = line(number_patt);
-			TString hgt = line(number_patt, wid.Start()+wid.Length());
-			_w = TString(wid).Atoi();
-			if (_w <= 0) {
-				std::cout << "Error parsing options: Window width " << _w << " not allowed.\n";
-				return -1;
-			}
-			_h = hgt.Atoi();
-			if (_h <= 0) {
-				std::cout << "Error parsing options: Window height " << _h << " not allowed.\n";
-				return -1;
-			}
-			continue;
-		}
+    if(line.BeginsWith("#") || line.BeginsWith("!")) continue;
 
 
-	  for (int i=0; i<nObservables; i++) {
-	    TString achan = line(TRegexp(Form("%s: ", obs->Name(static_cast<kObservables>(i)))));
+    /**** Run control ****/
+
+    if( (line.Contains("event", TString::kIgnoreCase)
+        || line.Contains("evt", TString::kIgnoreCase))
+        && line.Contains("max", TString::kIgnoreCase) ) {
+      TString nevtm = line(number_patt);
+      nEvtMax = nevtm.Atoi();
+      if (nEvtMax < 0) { nEvtMax = 0; }
+      continue;
+    }
+
+
+    /**** Display appearance and behaviour ****/
+
+    if(line.Contains("window", TString::kIgnoreCase)) {
+      TSubString wid = line(number_patt);
+      TString hgt = line(number_patt, wid.Start()+wid.Length());
+      _w = TString(wid).Atoi();
+      if (_w <= 0) {
+        std::cout << "Error parsing options: Window width " << _w << " not allowed.\n";
+        return -1;
+      }
+      _h = hgt.Atoi();
+      if (_h <= 0) {
+        std::cout << "Error parsing options: Window height " << _h << " not allowed.\n";
+        return -1;
+      }
+      continue;
+    }
+
+
+    for (int i=0; i<nObservables; i++) {
+      TString achan = line(TRegexp(Form("%s: ", obs->Name(static_cast<kObservables>(i)))));
       if(achan.Length() > 1) {
         TSubString lo = line(number_patt);
         TString hi = line(number_patt, lo.Start()+lo.Length());
         histolo[i] = TString(lo).Atoi();
         histohi[i] = TString(hi).Atoi();
-        if(histolo[i] == histohi[i]) {
+      if(histolo[i] == histohi[i]) {
           std::cout << "Error parsing options: " << achan.Data() << " limits equal ("
               << histolo[i] << ", " << histohi[i] << ")\n";
           return -1;
@@ -116,34 +137,34 @@ int config::ParseOptions(std::ifstream *input)
           histohi[i] = tmp;
         }
       } // (achan.Length() > 1)
-		} // loop over observables
+    } // loop over observables
 
 
 
-		if(line.Contains("reduction", TString::kIgnoreCase)) {
-			TSubString t = line(number_patt);
-			TSubString x = line(number_patt, t.Start()+t.Length());
-			TSubString y = line(number_patt, x.Start()+x.Length());
-			_tRed = TString(t).Atoi();
-			if (_tRed <= 0) {
-				std::cout << "Time reduction value " << _tRed << " is not positive.\n";
-				return -1;
-			}
-			_xRed = TString(x).Atoi();
-			if (_xRed <= 0) {
-				std::cout << "X reduction value " << _xRed << " is not positive.\n";
-				return -1;
-			}
-			_yRed = TString(y).Atoi();
-			if (_yRed <= 0) {
-				std::cout << "Y reduction value " << _yRed << " is not positive.\n";
-				return -1;
-			}
-			continue;
-		}
+    if(line.Contains("reduction", TString::kIgnoreCase)) {
+      TSubString t = line(number_patt);
+      TSubString x = line(number_patt, t.Start()+t.Length());
+      TSubString y = line(number_patt, x.Start()+x.Length());
+      _tRed = TString(t).Atoi();
+      if (_tRed <= 0) {
+        std::cout << "Time reduction value " << _tRed << " is not positive.\n";
+        return -1;
+      }
+      _xRed = TString(x).Atoi();
+      if (_xRed <= 0) {
+        std::cout << "X reduction value " << _xRed << " is not positive.\n";
+        return -1;
+      }
+      _yRed = TString(y).Atoi();
+      if (_yRed <= 0) {
+        std::cout << "Y reduction value " << _yRed << " is not positive.\n";
+        return -1;
+      }
+      continue;
+    }
 
 
-		/**** Evaluation board parameters ****/
+    /**** Evaluation board parameters ****/
 
     if(line.Contains("sample", TString::kIgnoreCase) &&
        line.Contains("rate", TString::kIgnoreCase) )    {
@@ -186,8 +207,8 @@ int config::ParseOptions(std::ifstream *input)
       continue;
     }
 
-	}
-	return 0;
+  }
+  return 0;
 }
 
 

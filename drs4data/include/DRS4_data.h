@@ -13,8 +13,8 @@
 #include <vector>
 #include <fstream>
 #include "stdint.h"
-#include "DRS.h"
 
+#include "DRS.h"
 
 namespace DRS4_data {
 
@@ -137,11 +137,14 @@ namespace DRS4_data {
   struct ChannelData {
 
     ChannelData(const unsigned short chnum) :
-      ch(chnum), scaler(0) {}
+      ch(chnum), scaler(0), data(new uint16_t[nChansDRS4]) {}
+    ~ChannelData() {
+      delete [] data;
+    }
 
     const CHEADER ch;
     uint32_t scaler;
-    uint16_t data[nChansDRS4];
+    uint16_t *data;
   };
 
 
@@ -187,6 +190,8 @@ namespace DRS4_data {
     DRSHeaders(DRSHeaders&);
     DRSHeaders(const FHEADER, std::vector<BHEADER*>, ChannelTimes*);
     ~DRSHeaders();
+
+    static DRSHeaders* MakeDRSHeaders(DRS*);
 
     const FHEADER fheader;
     const std::vector<BHEADER*> bheaders;

@@ -6,6 +6,7 @@
 
 #include <queue>
 #include <vector>
+#include <iostream>
 #include "DRS4_fifo.h"
 
 namespace DRS4_data {
@@ -17,8 +18,9 @@ namespace DRS4_data {
 
   RawEvent::~RawEvent() {
 
-    for (unsigned iwf=0; iwf<eventWaves.size(); iwf++) {
-      delete eventWaves.at(iwf);
+    while (!eventWaves.empty()) {
+      delete eventWaves.back();
+      eventWaves.pop_back();
     }
   }
 
@@ -56,6 +58,11 @@ namespace DRS4_data {
 
   // Push the pointer. The caller should have already reserved the memory.
   int DRS4_fifo::write(RawEvent * pt) {
+
+    if (eventWaves.size() > maxSize) {
+      std::cout << "FIFO buffer full!" << std::endl;
+      return -1;
+    }
     eventWaves.push(pt);
     return 0;
   }

@@ -97,7 +97,9 @@ void DRS4_writer::run( DRS4_writer* w, const unsigned nEvtMax) {
 
   w->f_isRunning = true;
 
-  double range = w->drs->GetBoard(0)->GetInputRange();
+  w->drs->SortBoards();
+  DRSBoard *mb = w->drs->GetBoard(0);
+  double range = mb->GetInputRange();
 
 
   while(!w->f_stop && w->iEvent<nEvtMax) {
@@ -107,23 +109,24 @@ void DRS4_writer::run( DRS4_writer* w, const unsigned nEvtMax) {
     w->event->header.setRange(range);
 
     /* start boards (activate domino wave), master is last */
-    for (int iboard=w->drs->GetNumberOfBoards()-1 ; iboard>=0 ; iboard--)
+    for (int iboard=w->drs->GetNumberOfBoards()-1 ; iboard>=0 ; iboard--) {
       w->drs->GetBoard(iboard)->StartDomino();
+    }
 
     /* If auto trigger specified, send auto trigger */
     if( w->f_autoTrigger ) {
-      w->drs->GetBoard(0)->SoftTrigger();
-      std::cout << "DRS4_writer::run() Soft trigger." << std::endl;
+      mb->SoftTrigger();
+//      std::cout << "DRS4_writer::run() Soft trigger." << std::endl;
     }
     else {
-      std::cout << "DRS4_writer::run() Waiting for trigger." << std::endl;
+//      std::cout << "DRS4_writer::run() Waiting for trigger." << std::endl;
     }
     while (w->drs->GetBoard(0)->IsBusy());
 
     w->event->header.setTimeStamp();
 
     /*** Transfer waveforms for all boards ***/
-    std::cout << "DRS4_writer::run() - Transferring waves." << std::endl;
+//    std::cout << "DRS4_writer::run() - Transferring waves." << std::endl;
 
     for (int iboard=0; iboard<w->drs->GetNumberOfBoards(); iboard++) {
 
@@ -132,7 +135,7 @@ void DRS4_writer::run( DRS4_writer* w, const unsigned nEvtMax) {
       DRS4_data::Waveforms *wf = new DRS4_data::Waveforms;
 
       b->TransferWaves(wf->waveforms, 0, 8);
-      w->event->header.setTriggerCell( w->drs->GetBoard(0)->GetTriggerCell(0) );
+      w->event->header.setTriggerCell( b->GetTriggerCell(0) );
 
       w->event->eventWaves.push_back(wf);
 
@@ -141,7 +144,9 @@ void DRS4_writer::run( DRS4_writer* w, const unsigned nEvtMax) {
     w->fifo->write(w->event);
     w->event = NULL; // Here we promise not to accidentally write in this raw event
     w->iEvent++;
-    std::cout << "Done with event #" << w->iEvent << std::endl;
+    if (w->iEvent%100 == 0) {
+      std::cout << "Acquired event #" << w->iEvent << std::endl;
+    }
   } // Loop over events
 
   w->f_isRunning = false;

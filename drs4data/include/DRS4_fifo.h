@@ -48,9 +48,11 @@ namespace DRS4_data {
     RawEvent* read() ;
     // Push the pointer. The caller should have already reserved the memory.
     int write(RawEvent*) ;
+    bool isEmpty() const { return eventWaves.empty(); }
 
     void Discard();
 
+    static const unsigned maxSize = 10000;
 
   private:
     std::queue<RawEvent*> eventWaves;

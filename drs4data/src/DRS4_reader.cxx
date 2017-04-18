@@ -22,43 +22,11 @@
 
 DRS4_reader::DRS4_reader(DRS4_data::DRS4_fifo *const _fifo, DRS* _drs) :
   drs(_drs), fifo(_fifo), rawWave(NULL), event(NULL),
-  headers(NULL), iEvtSerial(0), iEvtProcessed(0), file(NULL),
+  headers(DRS4_data::DRSHeaders::MakeDRSHeaders(drs)),
+  iEvtSerial(0), iEvtProcessed(0), file(NULL),
   f_stop(false), f_stopWhenEmpty(false)
 {
   std::cout << "DRS4_reader::DRS4_reader()." << std::endl;
-
-  // Objects for the initialization of the DRS headers
-  DRS4_data::FHEADER fheader(drs->GetBoard(0)->GetDRSType());
-  std::vector<DRS4_data::BHEADER*> bheaders;
-  DRS4_data::ChannelTimes *chTimes = new DRS4_data::ChannelTimes;
-
-  /*** Get board serial numbers and time bins ***/
-  for (int iboard=0; iboard<drs->GetNumberOfBoards(); iboard++) {
-
-    std::cout << "DRS4_reader::DRS4_reader() - Reading board #" << iboard << std::endl;
-
-    DRSBoard *b = drs->GetBoard(iboard);
-
-    // Board serial numbers
-    DRS4_data::BHEADER *bhdr = new DRS4_data::BHEADER(b->GetBoardSerialNumber());
-    bheaders.push_back(bhdr);
-
-    std::vector<DRS4_data::ChannelTime*> chTimeVec;
-
-    for (int ichan=0 ; ichan<4 ; ichan++) {
-
-      DRS4_data::ChannelTime *ct = new DRS4_data::ChannelTime(ichan+1);
-      // Get time bins
-      b->GetTime(iboard, ichan*2, b->GetTriggerCell(iboard), ct->tbins);
-
-      chTimeVec.push_back(ct);
-    } // End loop over channels
-
-    chTimes->push_back(chTimeVec);
-
-  } // End loop over boards
-
-  headers = new DRS4_data::DRSHeaders(fheader, bheaders, chTimes);
 }
 
 DRS4_reader::~DRS4_reader() {
@@ -182,6 +150,7 @@ int DRS4_reader::run(const char *filename, DRS4_writer * const writer) {
       event->write(file);
       processEvent();
       delete event;
+      delete rawWave;
       iEvtProcessed++;
     } // If rawWave (fifo not empty)
     else {
