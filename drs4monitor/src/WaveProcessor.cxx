@@ -207,8 +207,8 @@ void WaveProcessor::PrintCurrentHist(int ch) const {
 
 	tmp->Draw("hist");
 	
-	TSpectrum *s = new TSpectrum(); 
-	s->Search(tmp,5,"",0.10);
+	//TSpectrum *s = new TSpectrum(); 
+	//s->Search(tmp,5,"",0.10);
 
 	
 	if (DEBUG) cout<<"Histogram Draw"<<endl<<flush;
@@ -260,15 +260,20 @@ WaveformParam output; //how many parameters to be returned
 	/// check Etot subtraction of the baseLine
 	output.Etot = AnalysisHist->Integral(ArrivalTimeBin, AnalysisHist->GetXaxis()->GetNbins(), "width"); 
 	
-	output.maxVal  = AnalysisHist->GetMaximum();
+
 	
 	// DRS4 writes everything what happened 40 ns before the trigger, when delay=0, otherwise the delay is substracted from 40 ns
 	// I took 35 ns, just to have a safe distance.
 	output.baseLine = AnalysisHist->Integral(0, AnalysisHist->FindBin(35.-delay), "width") / (35.-delay) ; 
+	/*
+	 * RMS of the baseLine will be used as a rejection condition
+	output->hist->GetXaxis()->SetRange(0, output->hist->FindBin(35.-delay));
+	output->Value(baseLineRMS) = output->hist->GetRMS();
+	output->hist->GetXaxis()->UnZoom();
+	*/
 	
-	
-	TSpectrum *s = new TSpectrum(); 
-		output.peakMultiplicity = s->Search(AnalysisHist,5,"",0.10); // search AnalysisHist histogram for all peaks with 8 % of amplitude of maximum peak
+	//TSpectrum *s = new TSpectrum(); 
+		output.peakMultiplicity = 0; // to do later by other means // s->Search(AnalysisHist,5,"",0.10); // search AnalysisHist histogram for all peaks with 8 % of amplitude of maximum peak
 														// Int_t TSpectrum::Search(const TH1 *hin,Double_t sigma = 2, Option_t* option = "", Double_t threshold = 0.05) 	
 														// sigma assumes the width of peaks to be found
 	
@@ -291,7 +296,8 @@ WaveformParam output; //how many parameters to be returned
 	*/
 	
 	output.Etot -= output.baseLine*(AnalysisHist->GetXaxis()->GetBinUpEdge(1023) - output.arrivalTime);//(AnalysisHist->GetBinCenter(1023)-(35.-delay));
-		
+	
+	output.maxVal  = AnalysisHist->GetMaximum() - output.baseLine;	
 
 	TH1F *tmpHist = (TH1F*) AnalysisHist->Clone(); // baseLine should be subtracted in order to get time of 90% energy deposition of real signal (baseLine excluded)
 	for (i=0; i<1024; i++){
@@ -345,7 +351,8 @@ Observables* WaveProcessor::ProcessOnline(Float_t* RawTimeArr, Float_t* RawVoltA
 
   Observables *output = new Observables;
 	int i;
-	char histTitle[30];
+
+		char histfilename[60];
 	
 	output->hist = new TH1F("RawTempShape", "RawTempShape", RawArrLength - 1, RawTimeArr); // nonequidistand histogram
 	
@@ -357,6 +364,9 @@ Observables* WaveProcessor::ProcessOnline(Float_t* RawTimeArr, Float_t* RawVoltA
 	
 	// baseLine must be calculated first.
 	output->Value(baseLine) = output->hist->Integral(0, output->hist->FindBin(35.-delay), "width") / (35.-delay) ;
+
+	output->Value(baseLineRMS) = CalcHistRMS(output->hist, 1, output->hist->FindBin(35.-delay));
+
 	// baseline subtraction
 	TH1F *tmpHist = (TH1F*) output->hist->Clone(); // baseLine should be subtracted in order to get time of 90% energy deposition of real signal (baseLine excluded)
 	for (i=0; i<RawArrLength; i++) tmpHist->SetBinContent(i, (tmpHist->GetBinContent(i)-output->Value(baseLine)));
@@ -364,15 +374,13 @@ Observables* WaveProcessor::ProcessOnline(Float_t* RawTimeArr, Float_t* RawVoltA
 	TH1* hcumul = tmpHist->GetCumulative();
 	hcumul->Scale(1/tmpHist->Integral()); // normalize cumulative histogram to 1
 	
-		
 	output->Value(arrivalTime) = output->hist->GetXaxis()->GetBinCenter(ArrivalTimeBin);
 	output->Value(eTot) = output->hist->Integral(ArrivalTimeBin, output->hist->GetXaxis()->GetNbins(), "width")
 				- output->Value(baseLine)*(output->hist->GetXaxis()->GetBinUpEdge(1023)- output->Value(arrivalTime));//(35.-delay));
-	output->Value(maxVal) = output->hist->GetMaximum();
+	output->Value(maxVal) = output->hist->GetMaximum() - output->Value(baseLine);
 	output->Value(dt90) = output->hist->GetXaxis()->GetBinCenter(hcumul->FindFirstBinAbove(0.9))-output->Value(arrivalTime);
 	output->Value(dt70) = output->hist->GetXaxis()->GetBinCenter(hcumul->FindFirstBinAbove(0.7))-output->Value(arrivalTime);
 	output->Value(dt50) = output->hist->GetXaxis()->GetBinCenter(hcumul->FindFirstBinAbove(0.5))-output->Value(arrivalTime);
-	
 	
 	output->Value(ePrompt) = output->hist->Integral(ArrivalTimeBin, output->hist->FindBin(output->Value(arrivalTime) + 10.), "width")
 	- output->Value(baseLine)*10. ; // Integral of first 10 ns of signal
@@ -393,5 +401,24 @@ void WaveProcessor::reset_temporary_histograms(){
 	
 	}
 
+float WaveProcessor::CalcHistRMS(const TH1F *hist, int first, int last){
+	TH1F *RMShist;
+	Float_t width;
+	
+	Double_t max = hist->GetMaximum();
+	Double_t min = hist->GetMaximum();
+	
+	RMShist = new TH1F("RMShist", "RMShist", 100, min, max);
+	
+	for(int i=first; i<=last; i++){
+		width = hist->GetXaxis()->GetBinWidth(i);
+		//widthSum+=width;
+		RMShist->Fill(hist->GetBinContent(i), 1/width); // longer integral measurement carries less of information about the time variation
+	}
+	//RMShist->Scale(1/widthSum); // not necessary
+	
+	return RMShist->GetRMS();
+	
+}
 
 
