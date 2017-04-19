@@ -35,6 +35,7 @@ namespace DRS4_data {
                       dt70,             // Time of collection of 70% of energy after leading edge
                       dt90,             // Time of collection of 90% of energy after leading edge
                       baseLine,         // baseline
+                      baseLineRMS,		// RMS of the baseline
                       maxVal,           // Peak value
                       nObservables      // Keep this because config needs this number at compile time
                     };
@@ -51,6 +52,7 @@ namespace DRS4_data {
       observables.insert(std::pair<kObservables, Observable>(dt70, Observable("dt70", "#Delta t_{70%}", "ns", -100)));
       observables.insert(std::pair<kObservables, Observable>(dt90, Observable("dt90", "#Delta t_{90%}", "ns", -100)));
       observables.insert(std::pair<kObservables, Observable>(baseLine, Observable("baseLine", "Baseline", "mV", 0)));
+      observables.insert(std::pair<kObservables, Observable>(baseLineRMS, Observable("baseLineRMS", "RMS of Baseline", "mV", 0)));      
       observables.insert(std::pair<kObservables, Observable>(maxVal, Observable("maxVal", "Peak value", "mV", 0)));
     }
     ~Observables() {
