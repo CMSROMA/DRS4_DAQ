@@ -13,7 +13,7 @@
 #include "TF1.h"
 #include "TMath.h"
 #include "TCanvas.h"
-#include "TSpectrum.h"
+//#include "TSpectrum.h"
 
 #include "observables.h"
 
@@ -107,6 +107,8 @@ class WaveProcessor {
     DRS4_data::Observables* ProcessOnline(Float_t* , Float_t* , Int_t);
     
     private:
+    
+    float CalcHistRMS(const TH1F*, int, int );
     
     float triggerHeight;
     float delay;
