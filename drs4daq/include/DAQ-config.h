@@ -27,7 +27,7 @@ public:
   /*** Options defining the behaviour of the display ***/
 	unsigned int _w, _h;
 	short histolo[DRS4_data::nObservables], histohi[DRS4_data::nObservables];
-	int _tRed, _xRed, _yRed;
+	int _tRed, _tRed2D, _xRed, _yRed;
 
   /*** Options to setup the DRS4 evaluation board ***/
 	double sampleRate;

@@ -86,6 +86,7 @@ protected:
   TRootCanvas *frCanvasOsc;
 
   const short tRed; // Update frequency reduction factor
+  const short tRed2D; // Update frequency reduction factor for 2D histograms
 
   TString basename, filename;
 
@@ -151,7 +152,7 @@ protected:
   float *amplitudes;
 
 
-  int itRed;
+  int itRed, itRed2D;
   std::ofstream *log;
 
   int Run();

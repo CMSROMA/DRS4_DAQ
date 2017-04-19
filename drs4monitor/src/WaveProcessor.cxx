@@ -213,9 +213,7 @@ void WaveProcessor::PrintCurrentHist(int ch) const {
 	
 	if (DEBUG) cout<<"Histogram Draw"<<endl<<flush;
 	canvTempShape->SaveAs(histfilename);
-	
 
-	
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -377,7 +375,8 @@ Observables* WaveProcessor::ProcessOnline(Float_t* RawTimeArr, Float_t* RawVoltA
 	output->Value(ePrompt) = output->hist->Integral(ArrivalTimeBin, output->hist->FindBin(output->Value(arrivalTime) + 10.), "width")
 	- output->Value(baseLine)*10. ; // Integral of first 10 ns of signal
 
-	tmpHist->Delete();
+	delete hcumul;
+	delete tmpHist;
 
 	return output;
 }

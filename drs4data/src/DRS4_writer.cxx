@@ -86,7 +86,8 @@ bool DRS4_writer::isJoinable() {
 
 void DRS4_writer::run( DRS4_writer* w, const unsigned nEvtMax) {
 
-  std::cout << "Starting DRS4_writer.\n";
+  std::cout << "Starting DRS4_writer on CPU " << sched_getcpu() << "\n";
+
 
   assert(w->drs!=NULL);
   if ( w->drs->GetNumberOfBoards() < 1 ) {

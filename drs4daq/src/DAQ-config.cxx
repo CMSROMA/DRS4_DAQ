@@ -16,7 +16,7 @@ using namespace DRS4_data;
 config::config(Observables *_obs) :
   nEvtMax(10),
   _w(600), _h(350),
-  _tRed(10), _xRed(2), _yRed(2),
+  _tRed(10), _tRed2D(50), _xRed(2), _yRed(2),
   sampleRate(5), inputRange(0), triggerLevel(-0.05),
   triggerNegative(true), trigDelay(150), triggerSource(1),
   obs(_obs)
@@ -40,7 +40,7 @@ int config::DumpOptions() const {
   for (int i=0; i<nObservables; i++) {
     std::cout << Form("%s: ", obs->Name(static_cast<kObservables>(i))) << histolo[i] << " - " << histohi[i] << std::endl;
   }
-  std::cout << "Reduction: x(" << _xRed << "X), y(" << _yRed << "X), t(" << _tRed << "X).\n";
+  std::cout << "Reduction: x(" << _xRed << "X), y(" << _yRed << "X), t(" << _tRed << "X), t2D(" << _tRed2D << "X).\n";
 
   std::cout << "\nDump of the DAQ configuration:\n\n";
   std::cout << "Sample rate: " << sampleRate <<  std::endl;
@@ -143,11 +143,17 @@ int config::ParseOptions(std::ifstream *input)
 
     if(line.Contains("reduction", TString::kIgnoreCase)) {
       TSubString t = line(number_patt);
-      TSubString x = line(number_patt, t.Start()+t.Length());
+      TSubString t2D = line(number_patt, t.Start()+t.Length());
+      TSubString x = line(number_patt, t2D.Start()+t2D.Length());
       TSubString y = line(number_patt, x.Start()+x.Length());
       _tRed = TString(t).Atoi();
       if (_tRed <= 0) {
         std::cout << "Time reduction value " << _tRed << " is not positive.\n";
+        return -1;
+      }
+      _tRed2D = TString(t2D).Atoi();
+      if (_tRed2D <= 0) {
+        std::cout << "Time reduction value " << _tRed2D << " is not positive.\n";
         return -1;
       }
       _xRed = TString(x).Atoi();

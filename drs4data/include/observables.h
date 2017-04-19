@@ -54,6 +54,9 @@ namespace DRS4_data {
       observables.insert(std::pair<kObservables, Observable>(baseLine, Observable("baseLine", "Baseline", "mV", 0)));
       observables.insert(std::pair<kObservables, Observable>(maxVal, Observable("maxVal", "Peak value", "mV", 0)));
     }
+    ~Observables() {
+      if (hist) delete hist;
+    }
 
     float& Value(kObservables obs) { return observables.at(obs).value; }
     const char * Name(kObservables obs) const { return observables.at(obs).name.Data(); }

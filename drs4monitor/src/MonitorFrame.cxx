@@ -47,7 +47,7 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
   frCanvas2D(new TRootCanvas(fCanvas2D, "DRS4 Monitor 2D", 0, 200, opt->_w*2/3, opt->_h)),
   fCanvasOsc(new TCanvas("DRS4CanvasOsc", "DRS4 oscillogram", opt->_w/3, opt->_h/2)),
   frCanvasOsc(new TRootCanvas(fCanvasOsc, "DRS4 oscillogram", 0, 200, opt->_w/3, opt->_h/2)),
-  tRed(opt->_tRed),
+  tRed(opt->_tRed), tRed2D(opt->_tRed2D),
   basename("default"), filename("default"), timestamped(false),
   obs(new Observables),
   eTot12(NULL), ePrompt12(NULL), time12(NULL), time34(NULL),
@@ -57,7 +57,7 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
   headers(NULL), nEvtMax(opt->nEvtMax), iEvtSerial(0), iEvtProcessed(0), file(NULL),
   f_stop(false), f_stopWhenEmpty(false), f_running(false),
   timePoints(NULL), amplitudes(NULL),
-  itRed(0),
+  itRed(0), itRed2D(0),
   log(NULL)
 {
 
@@ -103,14 +103,24 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
   }
 
   fCanvas2D->Divide(2, 2, .002, .002);
-  fCanvas2D->cd(1); eTot12->Draw();
-  fCanvas2D->cd(2); ePrompt12->Draw();
-  fCanvas2D->cd(3); time12->Draw();
-  fCanvas2D->cd(4); time34->Draw();
+  fCanvas2D->cd(1); eTot12->Draw("colz");
+  fCanvas2D->cd(2); ePrompt12->Draw("colz");
+  fCanvas2D->cd(3); time12->Draw("colz");
+  fCanvas2D->cd(4); time34->Draw("colz");
   eTot12->SetStats(0);
   ePrompt12->SetStats(0);
   time12->SetStats(0);
   time34->SetStats(0);
+
+  fCanvasOsc->cd();
+  fCanvasOsc->GetListOfPrimitives()->SetOwner();
+  TH1F *oscFrame = new TH1F("OscFrame", "Oscillograms; t (ns); A (mV)", 10, 0., 200.);
+  oscFrame->SetBit(kCanDelete, false);
+  oscFrame->SetMinimum(-20);
+  oscFrame->SetMaximum(20);
+  oscFrame->SetStats(false);
+  oscFrame->Draw();
+  oscFrame=NULL;
 
 
 // Create a horizontal frame widget with buttons
@@ -209,6 +219,11 @@ MonitorFrame::~MonitorFrame() {
   delete ePrompt12;   ePrompt12 = NULL;
   delete time12;      time12 = NULL;
   delete time34;      time34 = NULL;
+
+  if (fifo) delete fifo;
+  if (drs) delete drs;
+  if (processor) delete processor;
+  if (writer) delete writer;
 }
 
 
@@ -313,10 +328,22 @@ void MonitorFrame::Start() {
 
   /*** Start monitor ***/
   Run();
+
+  /*** Cleanup after the run finishes ***/
   file->close();
   delete file;
   file = NULL;
   f_running = false;
+
+  if(rate) {
+    delete rate;  rate = NULL;
+  }
+
+  if(processor) {
+    delete processor;
+    processor = NULL;
+  }
+
 /*  for(int iboard=0; iboard<drs->GetNumberOfBoards(); iboard++) {
     drs->GetBoard(iboard)->ResetMultiBuffer();
   }*/
@@ -324,6 +351,8 @@ void MonitorFrame::Start() {
 
 
 int MonitorFrame::Run() {
+
+  std::cout << "Monitor on CPU " << sched_getcpu() << "\n";
 
   f_stop = false;
   f_stopWhenEmpty = false;
@@ -371,7 +400,7 @@ int MonitorFrame::Run() {
 
           if (ichan<2 && iboard==0) {
             obs[ichan] = processor->ProcessOnline(time, amplitude, kNumberOfBins);
-            obs[ichan]->hist->SetNameTitle(Form("Oscillogram_ch%d", ichan), "Oscillograms; t (ns); U (mV)");
+            obs[ichan]->hist->SetName(Form("Oscillogram_ch%d", ichan+1));
           }
 
         } // Loop over the channels
@@ -380,8 +409,12 @@ int MonitorFrame::Run() {
       }
 
       FillHistos(obs);
-      if(obs[0]->hist) delete obs[0]->hist;
-      if(obs[1]->hist) delete obs[1]->hist;
+      if(obs[0]) {
+        delete obs[0]; obs[0] = NULL;
+      }
+      if(obs[1]) {
+        delete obs[1]; obs[1] = NULL;
+      }
 
 
 
@@ -408,9 +441,6 @@ int MonitorFrame::Run() {
   } // !f_stop
 
   DoDraw(true);
-
-  delete rate;
-  rate = NULL;
 
   std::cout << "Events processed: " << iEvtProcessed << "\n";
   std::cout << Form("Elapsed time: %6.2f s.\n", timer.RealTime());
@@ -465,21 +495,36 @@ void MonitorFrame::FillHistos(Observables *obs[2])
 
   // TODO: calculate and process t3 and t4
 
-  itRed++;
-  if(itRed >= tRed) { itRed=0; DoDraw(true); }
-//  else { DoDraw(); }
+  itRed++; itRed2D++;
+  if(itRed2D >= tRed2D) { itRed2D=0; itRed=0; DoDraw(true); }
+  else if (itRed >= tRed) {
+    itRed=0;
+    DoDraw();
 
-  fCanvasOsc->cd();
-  gPad->Clear();
-  obs[0]->hist->SetLineColor(kBlue);
-  obs[0]->hist->SetMaximum(20);
-  obs[0]->hist->SetMinimum(-20);
-  obs[0]->hist->SetStats(false);
-  obs[0]->hist->DrawCopy("hist l");
-  obs[1]->hist->SetLineColor(kRed);
-  obs[1]->hist->DrawCopy("same hist l");
-  fCanvasOsc->Paint();
-  fCanvasOsc->Update();
+    fCanvasOsc->cd();
+    // Remove previous oscillograms
+    TList *listp = gPad->GetListOfPrimitives();
+    TObject *last = listp->Last();
+    if (last->IsA() == obs[0]->hist->IsA()) {
+      listp->RemoveLast();
+      delete last;
+      last = listp->Last();
+      if (last->IsA() == obs[0]->hist->IsA()) {
+        listp->RemoveLast();
+        delete last;
+      }
+    }
+
+ //   obs[0]->hist->Rebin(3);
+    obs[0]->hist->SetLineColor(kBlue);
+    obs[0]->hist->DrawCopy("same hist l")->SetBit(kCanDelete);
+
+ //   obs[1]->hist->Rebin(3);
+    obs[1]->hist->SetLineColor(kRed);
+    obs[1]->hist->DrawCopy("same hist l")->SetBit(kCanDelete);
+
+    fCanvasOsc->Update();
+  }
 
 } // FillHistos()
 
