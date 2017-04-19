@@ -60,16 +60,16 @@ int DRS4_reader::run(const char *filename, DRS4_writer * const writer) {
   /*** Write file header and time calibration ***/
   std::cout << "Writing headers and time calibration." << std::endl;
 
-  file->write(reinterpret_cast<const char*>(&headers->fheader), 4);
+  file->write(reinterpret_cast<const char*>(headers->FHeader()), 4);
   file->write(reinterpret_cast<const char*>(&DRS4_data::THEADER), 4);
 
-  for(int iboard=0; iboard<headers->chTimes.size(); iboard++) {
+  for(int iboard=0; iboard<headers->ChTimes()->size(); iboard++) {
     // Write board header
-    file->write(headers->bheaders.at(iboard)->bn, 2);
-    file->write(reinterpret_cast<const char*>(&(headers->bheaders.at(iboard)->board_serial_number)), 2);
+    file->write(headers->BHeaders()->at(iboard)->bn, 2);
+    file->write(reinterpret_cast<const char*>(&(headers->BHeaders()->at(iboard)->board_serial_number)), 2);
     // Write time calibration
-    for (int ichan=0; ichan<headers->chTimes.at(iboard).size(); ichan++) {
-      file->write(reinterpret_cast<const char*>(headers->chTimes.at(iboard).at(ichan)), sizeof(DRS4_data::ChannelTime) );
+    for (int ichan=0; ichan<headers->ChTimes()->at(iboard).size(); ichan++) {
+      file->write(reinterpret_cast<const char*>(headers->ChTimes()->at(iboard).at(ichan)), sizeof(DRS4_data::ChannelTime) );
     }
   } // End loop over boards
   std::cout << "Done writing headers." << std::endl;
@@ -101,7 +101,7 @@ int DRS4_reader::run(const char *filename, DRS4_writer * const writer) {
       std::cout << "Trigger cell is " << rawWave->header.getTriggerCell() << std::endl;
       event = new DRS4_data::Event(iEvtSerial, rawWave->header, drs);
 
-      for(int iboard=0; iboard<headers->chTimes.size(); iboard++) {
+      for(int iboard=0; iboard<headers->ChTimes()->size(); iboard++) {
         DRSBoard *b = drs->GetBoard(iboard);
         for (unsigned char ichan=0 ; ichan<4 ; ichan++) {
 
@@ -148,6 +148,7 @@ int DRS4_reader::run(const char *filename, DRS4_writer * const writer) {
 
       }
       event->write(file);
+      file->flush();
       processEvent();
       delete event;
       delete rawWave;

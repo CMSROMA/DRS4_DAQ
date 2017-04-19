@@ -92,8 +92,6 @@ protected:
 
   bool timestamped;
 
-  DRS4_data::Observables *obs;
-
   TH1F *histo[2][DRS4_data::nObservables];
   TH2F *eTot12;
   TH2F *ePrompt12;
@@ -151,9 +149,7 @@ protected:
   float *timePoints;
   float *amplitudes;
 
-
   int itRed, itRed2D;
-  std::ofstream *log;
 
   int Run();
   void FillHistos(Observables *[2]);

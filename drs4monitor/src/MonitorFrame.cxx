@@ -49,7 +49,6 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
   frCanvasOsc(new TRootCanvas(fCanvasOsc, "DRS4 oscillogram", 0, 200, opt->_w/3, opt->_h/2)),
   tRed(opt->_tRed), tRed2D(opt->_tRed2D),
   basename("default"), filename("default"), timestamped(false),
-  obs(new Observables),
   eTot12(NULL), ePrompt12(NULL), time12(NULL), time34(NULL),
   timeLastSave(0),  rate(NULL),
   drs(_drs), fifo(new DRS4_fifo), writer(NULL), processor(NULL),
@@ -57,23 +56,23 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
   headers(NULL), nEvtMax(opt->nEvtMax), iEvtSerial(0), iEvtProcessed(0), file(NULL),
   f_stop(false), f_stopWhenEmpty(false), f_running(false),
   timePoints(NULL), amplitudes(NULL),
-  itRed(0), itRed2D(0),
-  log(NULL)
+  itRed(0), itRed2D(0)
 {
 
+  Observables obs;
   for(int iobs=0; iobs<nObservables; iobs++) {
     kObservables kobs = static_cast<kObservables>(iobs);
-    histo[0][iobs] = new TH1F(Form("h1%d", iobs), Form("%s_{1}; %s_{1} (%s)", obs->Title(kobs), obs->Title(kobs), obs->Unit(kobs)), 100, opt->histolo[iobs], opt->histohi[iobs]);
-    histo[1][iobs] = new TH1F(Form("h2%d", iobs), Form("%s_{2}; %s_{2} (%s)", obs->Title(kobs), obs->Title(kobs), obs->Unit(kobs)), 100, opt->histolo[iobs], opt->histohi[iobs]);
+    histo[0][iobs] = new TH1F(Form("h1%d", iobs), Form("%s_{1}; %s_{1} (%s)", obs.Title(kobs), obs.Title(kobs), obs.Unit(kobs)), 100, opt->histolo[iobs], opt->histohi[iobs]);
+    histo[1][iobs] = new TH1F(Form("h2%d", iobs), Form("%s_{2}; %s_{2} (%s)", obs.Title(kobs), obs.Title(kobs), obs.Unit(kobs)), 100, opt->histolo[iobs], opt->histohi[iobs]);
   }
 
-  eTot12 = new TH2F("eTot12", Form("eTot2 vs. eTot1; %s_{1} (%s); %s_{2} (%s)", obs->Title(eTot), obs->Unit(eTot), obs->Title(eTot), obs->Unit(eTot)),
+  eTot12 = new TH2F("eTot12", Form("eTot2 vs. eTot1; %s_{1} (%s); %s_{2} (%s)", obs.Title(eTot), obs.Unit(eTot), obs.Title(eTot), obs.Unit(eTot)),
       (opt->histohi[eTot]-opt->histolo[eTot])/opt->_xRed, opt->histolo[eTot], opt->histohi[eTot],
       (opt->histohi[eTot]-opt->histolo[eTot])/opt->_xRed, opt->histolo[eTot], opt->histohi[eTot]);
-  ePrompt12 = new TH2F("ePrompt12", Form("ePrompt2 vs. ePrompt1; %s_{1} (%s); %s_{2} (%s)", obs->Title(ePrompt), obs->Unit(ePrompt), obs->Title(ePrompt), obs->Unit(ePrompt)),
+  ePrompt12 = new TH2F("ePrompt12", Form("ePrompt2 vs. ePrompt1; %s_{1} (%s); %s_{2} (%s)", obs.Title(ePrompt), obs.Unit(ePrompt), obs.Title(ePrompt), obs.Unit(ePrompt)),
       (opt->histohi[ePrompt]-opt->histolo[ePrompt])/opt->_xRed, opt->histolo[ePrompt], opt->histohi[ePrompt],
       (opt->histohi[ePrompt]-opt->histolo[ePrompt])/opt->_xRed, opt->histolo[ePrompt], opt->histohi[ePrompt]);
-  time12 = new TH2F("time12", Form("t_{2} vs. t_{1}; %s_{1} (%s); %s_{2} (%s)", obs->Title(arrivalTime), obs->Unit(arrivalTime), obs->Title(arrivalTime), obs->Unit(arrivalTime)),
+  time12 = new TH2F("time12", Form("t_{2} vs. t_{1}; %s_{1} (%s); %s_{2} (%s)", obs.Title(arrivalTime), obs.Unit(arrivalTime), obs.Title(arrivalTime), obs.Unit(arrivalTime)),
       (opt->histohi[arrivalTime]-opt->histolo[arrivalTime])/opt->_xRed, opt->histolo[arrivalTime], opt->histohi[arrivalTime],
       (opt->histohi[arrivalTime]-opt->histolo[arrivalTime])/opt->_xRed, opt->histolo[arrivalTime], opt->histohi[arrivalTime]);
   time34 = new TH2F("time34", "t_{4} vs. t_{3}; t_{3} (ns); t_{4} (ns)", 100, 0., 100., 100, 0., 100.);
@@ -81,16 +80,6 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
 
   if( gApplication->Argc() > 1 ) basename = gApplication->Argv()[1];
   std::cout << "basename = " << basename << "\n";
-
-  TTimeStamp ts(std::time(NULL), 0);
-    filename = basename;
-    filename += "_";
-    filename += ts.GetDate(0);
-    filename += "-";
-    filename += ts.GetTime(0);
-    filename += ".log";
-  log = new std::ofstream(filename.Data());
-  filename = basename;
 
   // Placement of histograms
   unsigned ny = int(sqrt(float(nObservables)));
@@ -229,27 +218,22 @@ MonitorFrame::~MonitorFrame() {
 
 
 void MonitorFrame::Exit() {
+
+  HardStop();
+
   std::cout << "Cleanup main frame.\n";
 
-  if(writer) {
-    delete writer;
-  }
-
-  if(fifo) {
-    delete fifo;
-  }
-
-  if(processor) {
-    delete processor;
-  }
-
-  log->close();
+  if(writer)    { delete writer;    writer    = NULL; }
+  if(fifo)      { delete fifo;      fifo      = NULL; }
+  if(processor) { delete processor; processor = NULL; }
 
   gApplication->Terminate(0);
 }
 
 
 void MonitorFrame::Start() {
+
+  if (f_running) { return; }
 
   std::cout << "Starting Monitor frame.\n";
 
@@ -264,8 +248,14 @@ void MonitorFrame::Start() {
   }
 
 
+  if(writer) {
+    if (writer->isRunning() || writer->isJoinable()) {
+      std::cout << "WARNING: Attempt to start while writer is running.!" << std::endl;
+      return;
+    }
+    delete writer;
+  }
   fifo->Discard();
-  if(writer) delete writer;
   writer = new DRS4_writer(drs, fifo);
   if(options->triggerSource == 0) {
     writer->setAutoTrigger();
@@ -306,18 +296,19 @@ void MonitorFrame::Start() {
 
   headers = DRS4_data::DRSHeaders::MakeDRSHeaders(drs);
 
-  file->write(reinterpret_cast<const char*>(&headers->fheader), 4);
+  file->write(reinterpret_cast<const char*>(headers->FHeader()), 4);
   file->write(reinterpret_cast<const char*>(&DRS4_data::THEADER), 4);
 
-  for(int iboard=0; iboard<headers->chTimes.size(); iboard++) {
+  for(int iboard=0; iboard<headers->ChTimes()->size(); iboard++) {
     // Write board header
-    file->write(headers->bheaders.at(iboard)->bn, 2);
-    file->write(reinterpret_cast<const char*>(&(headers->bheaders.at(iboard)->board_serial_number)), 2);
+    file->write(headers->BHeaders()->at(iboard)->bn, 2);
+    file->write(reinterpret_cast<const char*>(&(headers->BHeaders()->at(iboard)->board_serial_number)), 2);
     // Write time calibration
-    for (int ichan=0; ichan<headers->chTimes.at(iboard).size(); ichan++) {
-      file->write(reinterpret_cast<const char*>(headers->chTimes.at(iboard).at(ichan)), sizeof(DRS4_data::ChannelTime) );
+    for (int ichan=0; ichan<headers->ChTimes()->at(iboard).size(); ichan++) {
+      file->write(reinterpret_cast<const char*>(headers->ChTimes()->at(iboard).at(ichan)), sizeof(DRS4_data::ChannelTime) );
     }
   } // End loop over boards
+  file->flush();
   std::cout << "Done writing headers." << std::endl;
 
   processor = new WaveProcessor;
@@ -335,14 +326,10 @@ void MonitorFrame::Start() {
   file = NULL;
   f_running = false;
 
-  if(rate) {
-    delete rate;  rate = NULL;
-  }
-
-  if(processor) {
-    delete processor;
-    processor = NULL;
-  }
+  if (rate)      { delete rate;      rate      = NULL; }
+  if (processor) { delete processor; processor = NULL; }
+//  if (headers)   { delete headers;   headers   = NULL; }
+  if (writer)    { delete writer;    writer    = NULL; }
 
 /*  for(int iboard=0; iboard<drs->GetNumberOfBoards(); iboard++) {
     drs->GetBoard(iboard)->ResetMultiBuffer();
@@ -381,7 +368,8 @@ int MonitorFrame::Run() {
 
       Observables *obs[2] = {NULL, NULL};
 
-      for(int iboard=0; iboard<headers->chTimes.size(); iboard++) {
+      for(int iboard=0; iboard<headers->ChTimes()->size(); iboard++) {
+
         DRSBoard *b = drs->GetBoard(iboard);
         for (unsigned char ichan=0 ; ichan<4 ; ichan++) {
 
@@ -446,14 +434,6 @@ int MonitorFrame::Run() {
   std::cout << Form("Elapsed time: %6.2f s.\n", timer.RealTime());
   std::cout << Form("Event rate: %6.2f events/s \n", float(iEvtProcessed)/timer.RealTime());
 
-  TTimeStamp ts(std::time(NULL), 0);
-  filename = basename;
-  filename += "_";
-  filename += ts.GetDate(0);
-  filename += "-";
-  filename += ts.GetTime(0);
-  timestamped=true;
-
   f_running = false;
   return 0;
 
@@ -461,6 +441,9 @@ int MonitorFrame::Run() {
 
 
 void MonitorFrame::Stop() {
+
+  if (!f_running) return;
+  if (f_stopWhenEmpty) return;
 
   std::cout << "\n\nStopping acquisition.\n";
   writer->stop();
@@ -470,6 +453,9 @@ void MonitorFrame::Stop() {
 
 
 void MonitorFrame::HardStop() {
+
+  if(!f_running) return;
+  if(f_stop) return;
 
   std::cout << "\n\nStopping acquisition and monitor.\n";
   writer->stop();

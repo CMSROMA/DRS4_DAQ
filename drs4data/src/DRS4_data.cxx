@@ -44,8 +44,6 @@ namespace DRS4_data {
 
     using namespace std::chrono;
 
- //   using years = duration<int, std::ratio<3600*24*365>>;
-
     system_clock::time_point tp = system_clock::now();
     system_clock::duration dtn = tp.time_since_epoch();
 
@@ -58,7 +56,6 @@ namespace DRS4_data {
     hour = local_tm.tm_hour;
     minute = local_tm.tm_min;
     second = local_tm.tm_sec;
-    seconds s = duration_cast<seconds>(dtn);
     millisecond = duration_cast<milliseconds>(dtn).count()
                 - duration_cast<seconds>(dtn).count()*1000;
 
@@ -214,13 +211,15 @@ namespace DRS4_data {
 
   DRSHeaders::~DRSHeaders() {
 
-    for(int iboard=0; iboard<bheaders.size(); iboard++) {
-      delete bheaders.at(iboard);
+    while (!bheaders.empty()) {
+      delete bheaders.back();
+      bheaders.pop_back();
     }
 
-    for(int iboard=0; iboard<chTimes.size(); iboard++) {
-      for(int ichan=0; ichan<chTimes.at(iboard).size(); ichan++) {
-        delete chTimes.at(iboard).at(ichan);
+    while (!chTimes.empty()) {
+      while (!chTimes.back().empty()) {
+        delete chTimes.back().back();
+        chTimes.back().pop_back();
       }
     }
   }
@@ -258,6 +257,19 @@ namespace DRS4_data {
     } // End loop over boards
 
     return new DRS4_data::DRSHeaders(fheader, bheaders, chTimes);
+
+    while (!bheaders.empty()) {
+      delete bheaders.back();
+      bheaders.pop_back();
+    }
+
+    while (!chTimes->empty()) {
+      while (!chTimes->back().empty()) {
+        delete chTimes->back().back();
+        chTimes->back().pop_back();
+      }
+      chTimes->pop_back();
+    }
 
   }
 

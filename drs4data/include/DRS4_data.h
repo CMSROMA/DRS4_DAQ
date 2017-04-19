@@ -121,10 +121,13 @@ namespace DRS4_data {
   struct ChannelTime {
 
     ChannelTime(const unsigned short chnum) :
-          ch(chnum) {}
+          ch(chnum), tbins(new float[nChansDRS4]) {}
+    ~ChannelTime() {
+      delete [] tbins;
+    }
 
     const CHEADER ch;
-    float tbins[nChansDRS4];
+    float *tbins;
   };
 
 
@@ -188,14 +191,20 @@ namespace DRS4_data {
   // that are immutable during one run.
   public:
     DRSHeaders(DRSHeaders&);
-    DRSHeaders(const FHEADER, std::vector<BHEADER*>, ChannelTimes*);
     ~DRSHeaders();
 
     static DRSHeaders* MakeDRSHeaders(DRS*);
 
-    const FHEADER fheader;
-    const std::vector<BHEADER*> bheaders;
-    const ChannelTimes chTimes;
+    const FHEADER* FHeader() const { return &fheader; }
+    const std::vector<BHEADER*>* BHeaders() const { return &bheaders; }
+    const ChannelTimes* ChTimes() const { return &chTimes; }
+
+  private:
+    DRSHeaders(const FHEADER, std::vector<BHEADER*>, ChannelTimes*);
+
+    FHEADER fheader;
+    std::vector<BHEADER*> bheaders;
+    ChannelTimes chTimes;
   };
 
 } // namespace DRS4_data
