@@ -144,6 +144,4 @@ int main(int argc, char* argv[]) {
   std::cout << "Finished! Press enter to close.\n";
   std::cin.ignore();
   return 0;
-
-  return 0;
 }

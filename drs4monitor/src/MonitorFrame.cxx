@@ -209,11 +209,23 @@ MonitorFrame::~MonitorFrame() {
   delete time12;      time12 = NULL;
   delete time34;      time34 = NULL;
 
+  if (fCanvas01) delete fCanvas01; fCanvas01 = NULL;
+  if (frCanvas01) delete frCanvas01;
+  if (fCanvas02) delete fCanvas02;
+  if (frCanvas02) delete frCanvas02;
+  if (fCanvas2D) delete fCanvas2D;
+  if (frCanvas2D) delete frCanvas2D;
+  if (fCanvasOsc) delete fCanvasOsc;
+  if (frCanvasOsc) delete frCanvasOsc;
+
+
   if (fifo) delete fifo;
   if (drs) delete drs;
   if (processor) delete processor;
   if (writer) delete writer;
   if (headers) delete headers;
+  if (rawWave) delete rawWave;
+  if (event) delete event;
 }
 
 
@@ -224,10 +236,14 @@ void MonitorFrame::Exit() {
 
   std::cout << "Cleanup main frame.\n";
 
-  if(writer)    { delete writer;    writer    = NULL; }
-  if(fifo)      { delete fifo;      fifo      = NULL; }
-  if(processor) { delete processor; processor = NULL; }
+  if (writer)    { delete writer;    writer    = NULL; }
+  if (fifo)      { delete fifo;      fifo      = NULL; }
+  if (processor) { delete processor; processor = NULL; }
+  if (drs)       { delete drs;       drs       = NULL; }
+  if (writer)    { delete writer;    writer    = NULL; }
+  if (headers)   { delete headers;   headers   = NULL; }
 
+  gApplication->SetReturnFromRun(true);
   gApplication->Terminate(0);
 }
 
