@@ -213,6 +213,7 @@ MonitorFrame::~MonitorFrame() {
   if (drs) delete drs;
   if (processor) delete processor;
   if (writer) delete writer;
+  if (headers) delete headers;
 }
 
 
@@ -328,7 +329,7 @@ void MonitorFrame::Start() {
 
   if (rate)      { delete rate;      rate      = NULL; }
   if (processor) { delete processor; processor = NULL; }
-//  if (headers)   { delete headers;   headers   = NULL; }
+  if (headers)   { delete headers;   headers   = NULL; }
   if (writer)    { delete writer;    writer    = NULL; }
 
 /*  for(int iboard=0; iboard<drs->GetNumberOfBoards(); iboard++) {

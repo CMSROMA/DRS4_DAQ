@@ -221,6 +221,7 @@ namespace DRS4_data {
         delete chTimes.back().back();
         chTimes.back().pop_back();
       }
+      chTimes.pop_back();
     }
   }
 
