@@ -259,19 +259,6 @@ namespace DRS4_data {
 
     return new DRS4_data::DRSHeaders(fheader, bheaders, chTimes);
 
-    while (!bheaders.empty()) {
-      delete bheaders.back();
-      bheaders.pop_back();
-    }
-
-    while (!chTimes->empty()) {
-      while (!chTimes->back().empty()) {
-        delete chTimes->back().back();
-        chTimes->back().pop_back();
-      }
-      chTimes->pop_back();
-    }
-
   }
 
 }

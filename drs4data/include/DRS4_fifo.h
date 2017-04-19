@@ -11,14 +11,16 @@
 #include "DRS4_data.h"
 #include <queue>
 #include <vector>
+#include <iostream>
 
 
 namespace DRS4_data {
 
   struct Waveforms {
-    Waveforms() :
-      waveforms(new (std::nothrow) unsigned char [kNumberOfChipsMax * kNumberOfChannelsMax * 2 * kNumberOfBins])
-    { }
+    Waveforms() : waveforms(NULL)
+    {
+      waveforms = new (std::nothrow) unsigned char [kNumberOfChipsMax * kNumberOfChannelsMax * 2 * kNumberOfBins];
+    }
 /*    Waveforms::Waveforms(unsigned nChips=1, unsigned nChannels=8) :
       waveforms(new (std::nothrow) unsigned char [nChips * nChannels * 2 * kNumberOfBins])
     { }*/
@@ -48,14 +50,15 @@ namespace DRS4_data {
     RawEvent* read() ;
     // Push the pointer. The caller should have already reserved the memory.
     int write(RawEvent*) ;
-    bool isEmpty() const { return eventWaves.empty(); }
+    bool isEmpty() const { return eventQueue.empty(); }
+    unsigned size() const {return eventQueue.size(); }
 
     void Discard();
 
     static const unsigned maxSize = 10000;
 
   private:
-    std::queue<RawEvent*> eventWaves;
+    std::queue<RawEvent*> eventQueue;
 
   };
 

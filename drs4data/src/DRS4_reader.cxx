@@ -150,8 +150,8 @@ int DRS4_reader::run(const char *filename, DRS4_writer * const writer) {
       event->write(file);
       file->flush();
       processEvent();
-      delete event;
-      delete rawWave;
+      delete event; event = NULL;
+      delete rawWave; rawWave = NULL;
       iEvtProcessed++;
     } // If rawWave (fifo not empty)
     else {

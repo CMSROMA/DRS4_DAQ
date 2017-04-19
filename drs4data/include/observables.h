@@ -13,8 +13,7 @@
 #include <map>
 
 #include "TString.h"
-
-class TH1F;
+#include "TH1F.h"
 
 namespace DRS4_data {
 

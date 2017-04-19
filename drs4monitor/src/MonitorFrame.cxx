@@ -273,9 +273,14 @@ void MonitorFrame::Start() {
   time34->Reset();
 
 
-
   filename = basename;
-  timestamped=false;
+  TTimeStamp ts(std::time(NULL), 0);
+  filename = basename;
+  filename += "_";
+  filename += ts.GetDate(0);
+  filename += "-";
+  filename += ts.GetTime(0);
+  filename += ".dat";
 
 
   rate = new MonitorFrame::RateEstimator();
@@ -323,7 +328,7 @@ void MonitorFrame::Start() {
 
   /*** Cleanup after the run finishes ***/
   file->close();
-  delete file;
+  if(file) delete file;
   file = NULL;
   f_running = false;
 
@@ -405,11 +410,9 @@ int MonitorFrame::Run() {
         delete obs[1]; obs[1] = NULL;
       }
 
-
-
       event->write(file);
-      delete event;
-      delete rawWave;
+      delete event; event = NULL;
+      delete rawWave; rawWave = NULL;
       iEvtProcessed++;
       if(iEvtProcessed%100 == 0) {
         std::cout << "Processed event #" << iEvtProcessed << std::endl;
@@ -494,11 +497,11 @@ void MonitorFrame::FillHistos(Observables *obs[2])
     TObject *last = listp->Last();
     if (last->IsA() == obs[0]->hist->IsA()) {
       listp->RemoveLast();
-      delete last;
+      delete dynamic_cast<TH1F*>(last);
       last = listp->Last();
       if (last->IsA() == obs[0]->hist->IsA()) {
         listp->RemoveLast();
-        delete last;
+        delete dynamic_cast<TH1F*>(last);
       }
     }
 
