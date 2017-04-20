@@ -158,13 +158,21 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
 // Create a horizontal frame widget with text displays
   TGHorizontalFrame *hframeT = new TGHorizontalFrame(this,200,60);
 
-  TGLabel *nEvtL = new TGLabel(hframeT, "Event: ");
-  nEvtL->SetTextFont(ft);
-  hframeT->AddFrame(nEvtL, new TGLayoutHints(kLHintsCenterX,5,1,3,4));
+  TGLabel *nEvtAcqL = new TGLabel(hframeT, "N acq.: ");
+  nEvtAcqL->SetTextFont(ft);
+  hframeT->AddFrame(nEvtAcqL, new TGLayoutHints(kLHintsCenterX,5,1,3,4));
 
-  nEvtT = new TGLabel(hframeT, Form("%-15i", 0));
-  nEvtT->SetTextFont(ft);
-  hframeT->AddFrame(nEvtT, new TGLayoutHints(kLHintsCenterX,1,5,3,4));
+  nEvtAcqT = new TGLabel(hframeT, Form("%-15i", 0));
+  nEvtAcqT->SetTextFont(ft);
+  hframeT->AddFrame(nEvtAcqT, new TGLayoutHints(kLHintsCenterX,1,5,3,4));
+
+  TGLabel *nEvtProL = new TGLabel(hframeT, "N proc.: ");
+  nEvtProL->SetTextFont(ft);
+  hframeT->AddFrame(nEvtProL, new TGLayoutHints(kLHintsCenterX,5,1,3,4));
+
+  nEvtProT = new TGLabel(hframeT, Form("%-15i", 0));
+  nEvtProT->SetTextFont(ft);
+  hframeT->AddFrame(nEvtProT, new TGLayoutHints(kLHintsCenterX,1,5,3,4));
 
   TGLabel *rateL = new TGLabel(hframeT, "Rate: ");
   rateL->SetTextFont(ft);
@@ -422,7 +430,7 @@ int MonitorFrame::Run() {
       }
     } // If rawWave (fifo not empty)
     else {
-      if( f_stopWhenEmpty || !writer->isRunning() ) {
+      if( f_stopWhenEmpty ) {
         f_stop = true;
         break;
       }
@@ -432,6 +440,9 @@ int MonitorFrame::Run() {
     } // if(rawWave)
 
     gClient->ProcessEventsFor(this);
+    if (!writer->isRunning()) {
+      f_stopWhenEmpty = true;
+    }
 
   } // !f_stop
 
@@ -540,9 +551,10 @@ void MonitorFrame::DoDraw(bool all) {
   }
 
 
-
-  nEvtT->SetText(Form("%-10i", iEvtProcessed));
-  rate->Push(writer->NEvents(), timer.RealTime());
+  unsigned nAcq = writer->NEvents();
+  nEvtAcqT->SetText(Form("%-10i", nAcq));
+  nEvtProT->SetText(Form("%-10i", iEvtProcessed));
+  rate->Push(nAcq, timer.RealTime());
   rateT->SetText(Form("%5.3g evt/s", rate->Get()));
   timer.Continue();
 

@@ -74,7 +74,8 @@ protected:
 
   config *options;
 
-  TGLabel *nEvtT;
+  TGLabel *nEvtAcqT;
+  TGLabel *nEvtProT;
   TGLabel *rateT;
 
   TCanvas *fCanvas01;
