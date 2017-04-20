@@ -350,14 +350,14 @@ Observables* WaveProcessor::ProcessOnline(Float_t* RawTimeArr, Float_t* RawVoltA
   Observables *output = new Observables;
 	int i;
 
-		char histfilename[60];
+	triggerHeight = 30;
 	
 	output->hist = new TH1F("RawTempShape", "RawTempShape", RawArrLength - 1, RawTimeArr); // nonequidistand histogram
 	
 	//for(i=0; i<RawArrLength; i++) RawTempShape -> SetBinContent((i+RawTrigCell)%RawArrLength, RawVoltArr[i]);
-	for (i=0; i<RawArrLength; i++) output->hist -> Fill(RawTimeArr[i], RawVoltArr[i]);
+	for (i=0; i<RawArrLength; i++) output->hist -> Fill(RawTimeArr[i], -RawVoltArr[i]);
 	
-	int ArrivalTimeBin = output->hist->FindFirstBinAbove(triggerHeight); // bin should be transformed to ns according to axis
+  int ArrivalTimeBin = output->hist->FindFirstBinAbove(triggerHeight); // bin should be transformed to ns according to axis
 	if (ArrivalTimeBin==-1) return output; // I guess will be 0 and the event ignored
 	
 	// baseLine must be calculated first.
@@ -416,7 +416,9 @@ float WaveProcessor::CalcHistRMS(const TH1F *hist, int first, int last){
 	}
 	//RMShist->Scale(1/widthSum); // not necessary
 	
-	return RMShist->GetRMS();
+	float rms = RMShist->GetRMS();
+	delete RMShist;
+	return rms;
 	
 }
 

@@ -14,6 +14,7 @@
 //#include <TRootEmbeddedCanvas.h>
 #include "TRandom3.h"
 #include "TStopwatch.h"
+#include "WaveProcessor.h"
 
 
 #include "observables.h"
@@ -123,7 +124,7 @@ protected:
   DRS *drs;
   DRS4_fifo *fifo;
   DRS4_writer *writer;
-  WaveProcessor *processor;
+  WaveProcessor processor;
 
   DRS4_data::RawEvent *rawWave;
   DRS4_data::Event *event;

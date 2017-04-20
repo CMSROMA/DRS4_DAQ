@@ -21,7 +21,6 @@
 
 
 #include "MonitorFrame.h"
-#include "WaveProcessor.h"
 #include "Riostream.h"
 #include "TMath.h"
 
@@ -51,7 +50,7 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
   basename("default"), filename("default"), timestamped(false),
   eTot12(NULL), ePrompt12(NULL), time12(NULL), time34(NULL),
   timeLastSave(0),  rate(NULL),
-  drs(_drs), fifo(new DRS4_fifo), writer(NULL), processor(NULL),
+  drs(_drs), fifo(new DRS4_fifo), writer(NULL),
   rawWave(NULL), event(NULL),
   headers(NULL), nEvtMax(opt->nEvtMax), iEvtSerial(0), iEvtProcessed(0), file(NULL),
   f_stop(false), f_stopWhenEmpty(false), f_running(false),
@@ -105,8 +104,8 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
   fCanvasOsc->GetListOfPrimitives()->SetOwner();
   TH1F *oscFrame = new TH1F("OscFrame", "Oscillograms; t (ns); A (mV)", 10, 0., 200.);
   oscFrame->SetBit(kCanDelete, false);
-  oscFrame->SetMinimum(-20);
-  oscFrame->SetMaximum(20);
+  oscFrame->SetMinimum(-200);
+  oscFrame->SetMaximum(200);
   oscFrame->SetStats(false);
   oscFrame->Draw();
   oscFrame=NULL;
@@ -195,7 +194,8 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
 
 
 MonitorFrame::~MonitorFrame() {
-  std::cout << "Deleting main frame.\n";
+
+  std::cout << "Cleanup main frame.\n";
 
   for(int iobs=0; iobs<nObservables; iobs++) {
     delete histo[0][iobs];
@@ -219,13 +219,12 @@ MonitorFrame::~MonitorFrame() {
   if (frCanvasOsc) delete frCanvasOsc;
 
 
-  if (fifo) delete fifo;
-  if (drs) delete drs;
-  if (processor) delete processor;
-  if (writer) delete writer;
-  if (headers) delete headers;
-  if (rawWave) delete rawWave;
-  if (event) delete event;
+  if (writer)    { delete writer;    writer    = NULL; }
+  if (fifo)      { delete fifo;      fifo      = NULL; }
+  if (drs)       { delete drs;       drs       = NULL; }
+  if (headers)   { delete headers;   headers   = NULL; }
+  if (rawWave)   { delete rawWave;   rawWave   = NULL; }
+  if (event)     { delete event;     event     = NULL; }
 }
 
 
@@ -233,15 +232,6 @@ MonitorFrame::~MonitorFrame() {
 void MonitorFrame::Exit() {
 
   HardStop();
-
-  std::cout << "Cleanup main frame.\n";
-
-  if (writer)    { delete writer;    writer    = NULL; }
-  if (fifo)      { delete fifo;      fifo      = NULL; }
-  if (processor) { delete processor; processor = NULL; }
-  if (drs)       { delete drs;       drs       = NULL; }
-  if (writer)    { delete writer;    writer    = NULL; }
-  if (headers)   { delete headers;   headers   = NULL; }
 
   gApplication->SetReturnFromRun(true);
   gApplication->Terminate(0);
@@ -333,8 +323,6 @@ void MonitorFrame::Start() {
   file->flush();
   std::cout << "Done writing headers." << std::endl;
 
-  processor = new WaveProcessor;
-
   /*** Start writer ***/
   writer->start(nEvtMax);
   while (!writer->isRunning()) { std::this_thread::sleep_for(std::chrono::milliseconds(10)); };
@@ -349,7 +337,6 @@ void MonitorFrame::Start() {
   f_running = false;
 
   if (rate)      { delete rate;      rate      = NULL; }
-  if (processor) { delete processor; processor = NULL; }
   if (headers)   { delete headers;   headers   = NULL; }
   if (writer)    { delete writer;    writer    = NULL; }
 
@@ -409,7 +396,7 @@ int MonitorFrame::Run() {
               int(rawWave->header.getTriggerCell()), -1, adjustToClock, 0, applyOffsetCalib);
 
           if (ichan<2 && iboard==0) {
-            obs[ichan] = processor->ProcessOnline(time, amplitude, kNumberOfBins);
+            obs[ichan] = processor.ProcessOnline(time, amplitude, kNumberOfBins);
             obs[ichan]->hist->SetName(Form("Oscillogram_ch%d", ichan+1));
           }
 
@@ -523,10 +510,12 @@ void MonitorFrame::FillHistos(Observables *obs[2])
 
  //   obs[0]->hist->Rebin(3);
     obs[0]->hist->SetLineColor(kBlue);
+    obs[0]->hist->Scale(-1);
     obs[0]->hist->DrawCopy("same hist l")->SetBit(kCanDelete);
 
  //   obs[1]->hist->Rebin(3);
     obs[1]->hist->SetLineColor(kRed);
+    obs[1]->hist->Scale(-1);
     obs[1]->hist->DrawCopy("same hist l")->SetBit(kCanDelete);
 
     fCanvasOsc->Update();

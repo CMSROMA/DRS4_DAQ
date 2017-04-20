@@ -122,7 +122,11 @@ void DRS4_writer::run( DRS4_writer* w, const unsigned nEvtMax) {
     else {
 //      std::cout << "DRS4_writer::run() Waiting for trigger." << std::endl;
     }
-    while (w->drs->GetBoard(0)->IsBusy());
+    while (mb->IsBusy()) {
+      if (w->f_stop) {
+        mb->SoftTrigger();
+      }
+    }
 
     w->event->header.setTimeStamp();
 

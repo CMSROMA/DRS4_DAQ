@@ -141,7 +141,7 @@ int main(int argc, char* argv[]) {
   MonitorFrame frame(gClient->GetRoot(), &options, drs);
 
   app->Run();
-  std::cout << "Finished! Press enter to close.\n";
-  std::cin.ignore();
+ // std::cout << "Finished! Press enter to close.\n";
+ // std::cin.ignore();
   return 0;
 }
