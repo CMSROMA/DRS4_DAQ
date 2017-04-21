@@ -301,6 +301,7 @@ void MonitorFrame::Start() {
   rate->Push(0, 1.e-9); // One false time value to avoid division by zero
   timer.Start();
   timeLastSave = 0;
+  iEvtProcessed=0;
 
 
   file = new std::ofstream(filename, std::ios_base::binary & std::ios_base::trunc) ;
@@ -330,6 +331,8 @@ void MonitorFrame::Start() {
   } // End loop over boards
   file->flush();
   std::cout << "Done writing headers." << std::endl;
+
+  DoDraw(true);
 
   /*** Start writer ***/
   writer->start(nEvtMax);
@@ -371,7 +374,6 @@ int MonitorFrame::Run() {
   const bool adjustToClockForFile = false;
   const bool applyOffsetCalib = false;   // ?
 
-  iEvtProcessed=0;
 
   while(!f_stop) {
 
@@ -500,10 +502,16 @@ void MonitorFrame::FillHistos(Observables *obs[2])
   // TODO: calculate and process t3 and t4
 
   itRed++; itRed2D++;
-  if(itRed2D >= tRed2D) { itRed2D=0; itRed=0; DoDraw(true); }
-  else if (itRed >= tRed) {
+  if (itRed >= tRed) {
+
     itRed=0;
-    DoDraw();
+    bool draw2D = false;
+    if(itRed2D >= tRed2D) {
+      itRed2D=0;
+      itRed=0;
+      draw2D = true;
+    }
+    DoDraw(draw2D);
 
     fCanvasOsc->cd();
     // Remove previous oscillograms
