@@ -125,7 +125,6 @@ protected:
   DRS *drs;
   DRS4_fifo *fifo;
   DRS4_writer *writer;
-  WaveProcessor processor;
 
   DRS4_data::RawEvent *rawWave;
   DRS4_data::Event *event;

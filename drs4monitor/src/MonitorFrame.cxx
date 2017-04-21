@@ -414,7 +414,7 @@ int MonitorFrame::Run() {
               int(rawWave->header.getTriggerCell()), -1, adjustToClock, 0, applyOffsetCalib);
 
           if (ichan<2 && iboard==0) {
-            obs[ichan] = processor.ProcessOnline(time, amplitude, kNumberOfBins);
+            obs[ichan] = WaveProcessor::ProcessOnline(time, amplitude, kNumberOfBins, 30, 185);
             obs[ichan]->hist->SetName(Form("Oscillogram_ch%d", ichan+1));
           }
 

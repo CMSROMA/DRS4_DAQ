@@ -345,25 +345,35 @@ WaveformParam output; //how many parameters to be returned
 	return output;
 }
 
-Observables* WaveProcessor::ProcessOnline(Float_t* RawTimeArr, Float_t* RawVoltArr, Int_t RawArrLength){
+Observables *WaveProcessor::ProcessOnline( Float_t* RawTimeArr,
+    Float_t* RawVoltArr,
+    Int_t RawArrLength)
+{
+  return ProcessOnline( RawTimeArr, RawVoltArr, RawArrLength, triggerHeight, delay);
+}
 
+Observables* WaveProcessor::ProcessOnline( Float_t* RawTimeArr,
+                                                  Float_t* RawVoltArr,
+                                                  Int_t RawArrLength,
+                                                  float threshold,
+                                                  float trigDelay)
+{
   Observables *output = new Observables;
 	int i;
+	static float historyLen = 185;
 
-	triggerHeight = 30;
-	
 	output->hist = new TH1F("RawTempShape", "RawTempShape", RawArrLength - 1, RawTimeArr); // nonequidistand histogram
 	
 	//for(i=0; i<RawArrLength; i++) RawTempShape -> SetBinContent((i+RawTrigCell)%RawArrLength, RawVoltArr[i]);
 	for (i=0; i<RawArrLength; i++) output->hist -> Fill(RawTimeArr[i], -RawVoltArr[i]);
 	
-  int ArrivalTimeBin = output->hist->FindFirstBinAbove(triggerHeight); // bin should be transformed to ns according to axis
+  int ArrivalTimeBin = output->hist->FindFirstBinAbove(threshold); // bin should be transformed to ns according to axis
 	if (ArrivalTimeBin==-1) return output; // I guess will be 0 and the event ignored
 	
 	// baseLine must be calculated first.
-	output->Value(baseLine) = output->hist->Integral(0, output->hist->FindBin(35.-delay), "width") / (35.-delay) ;
+	output->Value(baseLine) = output->hist->Integral(0, output->hist->FindBin(historyLen-trigDelay), "width") / (historyLen-trigDelay) ;
 
-	output->Value(baseLineRMS) = CalcHistRMS(output->hist, 1, output->hist->FindBin(35.-delay));
+	output->Value(baseLineRMS) = CalcHistRMS(output->hist, 1, output->hist->FindBin(historyLen-trigDelay));
 
 	// baseline subtraction
 	TH1F *tmpHist = (TH1F*) output->hist->Clone(); // baseLine should be subtracted in order to get time of 90% energy deposition of real signal (baseLine excluded)
@@ -374,7 +384,7 @@ Observables* WaveProcessor::ProcessOnline(Float_t* RawTimeArr, Float_t* RawVoltA
 	
 	output->Value(arrivalTime) = output->hist->GetXaxis()->GetBinCenter(ArrivalTimeBin);
 	output->Value(eTot) = output->hist->Integral(ArrivalTimeBin, output->hist->GetXaxis()->GetNbins(), "width")
-				- output->Value(baseLine)*(output->hist->GetXaxis()->GetBinUpEdge(1023)- output->Value(arrivalTime));//(35.-delay));
+				- output->Value(baseLine)*(output->hist->GetXaxis()->GetBinUpEdge(1023)- output->Value(arrivalTime));
 	output->Value(maxVal) = output->hist->GetMaximum() - output->Value(baseLine);
 	output->Value(dt90) = output->hist->GetXaxis()->GetBinCenter(hcumul->FindFirstBinAbove(0.9))-output->Value(arrivalTime);
 	output->Value(dt70) = output->hist->GetXaxis()->GetBinCenter(hcumul->FindFirstBinAbove(0.7))-output->Value(arrivalTime);
