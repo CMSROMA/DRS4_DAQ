@@ -154,5 +154,10 @@ void DRS4_writer::run( DRS4_writer* w, const unsigned nEvtMax) {
     }
   } // Loop over events
 
+  // Set board(s) to idle
+  for (int iboard = 0; iboard<w->drs->GetNumberOfBoards(); iboard++) {
+    w->drs->GetBoard(iboard)->Reinit();
+  }
+
   w->f_isRunning = false;
 }

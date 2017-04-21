@@ -229,7 +229,15 @@ MonitorFrame::~MonitorFrame() {
 
   if (writer)    { delete writer;    writer    = NULL; }
   if (fifo)      { delete fifo;      fifo      = NULL; }
-  if (drs)       { delete drs;       drs       = NULL; }
+
+  if (drs)       {
+    // Make sure board(s) are idle before exiting
+    for (int iboard = 0; iboard<drs->GetNumberOfBoards(); iboard++) {
+      drs->GetBoard(iboard)->Reinit();
+    }
+    delete drs;       drs       = NULL;
+  }
+
   if (headers)   { delete headers;   headers   = NULL; }
   if (rawWave)   { delete rawWave;   rawWave   = NULL; }
   if (event)     { delete event;     event     = NULL; }
@@ -467,6 +475,7 @@ void MonitorFrame::Stop() {
 
   std::cout << "\n\nStopping acquisition.\n";
   writer->stop();
+
   timer.Stop();
   f_stopWhenEmpty = true;
 }
