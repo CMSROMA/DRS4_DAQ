@@ -186,7 +186,7 @@ namespace DRS4_data {
 
  //     std::cout << "Storing data." << std::endl;
       for (unsigned ichan=0; ichan<chData.at(iboard).size(); ichan++) {
-        file->write( reinterpret_cast<const char*>(chData.at(iboard).at(ichan)), sizeof(ChannelData) );
+        file->write( reinterpret_cast<const char*>(chData.at(iboard).at(ichan)), kNumberOfBins*sizeof(uint16_t) );
       } // loop over channels
 
     } // loop over boards

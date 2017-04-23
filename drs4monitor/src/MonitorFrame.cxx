@@ -334,7 +334,7 @@ void MonitorFrame::Start() {
     file->write(reinterpret_cast<const char*>(&(headers->BHeaders()->at(iboard)->board_serial_number)), 2);
     // Write time calibration
     for (int ichan=0; ichan<headers->ChTimes()->at(iboard).size(); ichan++) {
-      file->write(reinterpret_cast<const char*>(headers->ChTimes()->at(iboard).at(ichan)), sizeof(DRS4_data::ChannelTime) );
+      file->write(reinterpret_cast<const char*>(headers->ChTimes()->at(iboard).at(ichan)), kNumberOfBins*sizeof(float) );
     }
   } // End loop over boards
   file->flush();
@@ -414,7 +414,7 @@ int MonitorFrame::Run() {
               int(rawWave->header.getTriggerCell()), -1, adjustToClock, 0, applyOffsetCalib);
 
           if (ichan<2 && iboard==0) {
-            obs[ichan] = WaveProcessor::ProcessOnline(time, amplitude, kNumberOfBins, 30, 185);
+            obs[ichan] = WaveProcessor::ProcessOnline(time, amplitude, kNumberOfBins, 30, 150);
             obs[ichan]->hist->SetName(Form("Oscillogram_ch%d", ichan+1));
           }
 

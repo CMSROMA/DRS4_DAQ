@@ -362,8 +362,20 @@ Observables* WaveProcessor::ProcessOnline( Float_t* RawTimeArr,
 	int i;
 	static float historyLen = 185;
 
-	output->hist = new TH1F("RawTempShape", "RawTempShape", RawArrLength - 1, RawTimeArr); // nonequidistand histogram
-	
+//	std::cout << "Making RawTempShape." << std::endl;
+  output->hist = new TH1F("RawTempShape", "RawTempShape", RawArrLength - 1, RawTimeArr); // nonequidistand histogram
+//  output->hist = new TH1F("RawTempShape", "RawTempShape", RawArrLength-1, RawTimeArr[0], RawTimeArr[RawArrLength-1]);
+/*	std::cout << "time(" << RawTimeArr[0] << ", " << RawTimeArr[1] << ", ... " <<  RawTimeArr[RawArrLength - 2] << ", " << RawTimeArr[RawArrLength - 1] << ")\n";
+	for (int i=0; i<RawArrLength - 1; i++) {
+	  if (RawTimeArr[i+1] <= RawTimeArr[i]) {
+	    std::cout << "time(" << i-1 << ") = " << RawTimeArr[i-1]
+              << "\ntime(" << i   << ") = " << RawTimeArr[i]
+              << "\ntime(" << i+1 << ") = " << RawTimeArr[i+1]
+	            << "\ntime(" << i+2 << ") = " << RawTimeArr[i+2] << "\n";
+	  }
+	}
+  std::cout << "Made RawTempShape." << std::endl;
+	*/
 	//for(i=0; i<RawArrLength; i++) RawTempShape -> SetBinContent((i+RawTrigCell)%RawArrLength, RawVoltArr[i]);
 	for (i=0; i<RawArrLength; i++) output->hist -> Fill(RawTimeArr[i], -RawVoltArr[i]);
 	
@@ -376,10 +388,10 @@ Observables* WaveProcessor::ProcessOnline( Float_t* RawTimeArr,
 	output->Value(baseLineRMS) = CalcHistRMS(output->hist, 1, output->hist->FindBin(historyLen-trigDelay));
 
 	// baseline subtraction
-	TH1F *tmpHist = (TH1F*) output->hist->Clone(); // baseLine should be subtracted in order to get time of 90% energy deposition of real signal (baseLine excluded)
+	TH1F *tmpHist = static_cast<TH1F*>(output->hist->Clone()); // baseLine should be subtracted in order to get time of 90% energy deposition of real signal (baseLine excluded)
 	for (i=0; i<RawArrLength; i++) tmpHist->SetBinContent(i, (tmpHist->GetBinContent(i)-output->Value(baseLine)));
 
-	TH1* hcumul = tmpHist->GetCumulative();
+	TH1F* hcumul = static_cast<TH1F*>(tmpHist->GetCumulative());
 	hcumul->Scale(1/tmpHist->Integral()); // normalize cumulative histogram to 1
 	
 	output->Value(arrivalTime) = output->hist->GetXaxis()->GetBinCenter(ArrivalTimeBin);

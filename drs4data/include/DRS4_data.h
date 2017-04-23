@@ -18,8 +18,6 @@
 
 namespace DRS4_data {
 
-  static const unsigned nChansDRS4 = 1024;
-
   struct HEADER {
     HEADER(const char* init) { strncpy(header, init, 4); }
     char header[4];
@@ -121,7 +119,7 @@ namespace DRS4_data {
   struct ChannelTime {
 
     ChannelTime(const unsigned short chnum) :
-          ch(chnum), tbins(new float[nChansDRS4]) {}
+          ch(chnum), tbins(new float[kNumberOfBins]) {}
     ~ChannelTime() {
       delete [] tbins;
     }
@@ -140,7 +138,7 @@ namespace DRS4_data {
   struct ChannelData {
 
     ChannelData(const unsigned short chnum) :
-      ch(chnum), scaler(0), data(new uint16_t[nChansDRS4]) {}
+      ch(chnum), scaler(0), data(new uint16_t[kNumberOfBins]) {}
     ~ChannelData() {
       delete [] data;
     }
