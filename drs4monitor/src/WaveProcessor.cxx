@@ -374,7 +374,6 @@ Observables* WaveProcessor::ProcessOnline( Float_t* RawTimeArr,
 	            << "\ntime(" << i+2 << ") = " << RawTimeArr[i+2] << "\n";
 	  }
 	}
-  std::cout << "Made RawTempShape." << std::endl;
 	*/
 	//for(i=0; i<RawArrLength; i++) RawTempShape -> SetBinContent((i+RawTrigCell)%RawArrLength, RawVoltArr[i]);
 	for (i=0; i<RawArrLength; i++) output->hist -> Fill(RawTimeArr[i], -RawVoltArr[i]);

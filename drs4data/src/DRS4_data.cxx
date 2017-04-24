@@ -83,6 +83,21 @@ namespace DRS4_data {
 
 
 
+  /*** struct ChannelData ***/
+  int ChannelData::write(std::ofstream *file) {
+
+    if(!file) return -1;
+    if(!file->good()) return -2;
+
+    file->write( reinterpret_cast<const char*>(&ch), sizeof(CHEADER) );
+    file->write( reinterpret_cast<const char*>(&scaler), sizeof(uint32_t) );
+    file->write( reinterpret_cast<const char*>(data), kNumberOfBins*sizeof(uint16_t) );
+
+    return 0;
+  }
+
+
+
   /*** class Event ***/
 
   Event::Event(const unsigned iEvt, DRS *drs)
@@ -186,7 +201,7 @@ namespace DRS4_data {
 
  //     std::cout << "Storing data." << std::endl;
       for (unsigned ichan=0; ichan<chData.at(iboard).size(); ichan++) {
-        file->write( reinterpret_cast<const char*>(chData.at(iboard).at(ichan)), kNumberOfBins*sizeof(uint16_t) );
+        chData.at(iboard).at(ichan)->write(file);
       } // loop over channels
 
     } // loop over boards
@@ -247,8 +262,7 @@ namespace DRS4_data {
       for (int ichan=0 ; ichan<4 ; ichan++) {
 
         DRS4_data::ChannelTime *ct = new DRS4_data::ChannelTime(ichan+1);
-        // Get time bins
-        b->GetTime(iboard, ichan*2, b->GetTriggerCell(iboard), ct->tbins);
+        b->GetTimeCalibration(0, ichan*2, 0, ct->tbins);
 
         chTimeVec.push_back(ct);
       } // End loop over channels

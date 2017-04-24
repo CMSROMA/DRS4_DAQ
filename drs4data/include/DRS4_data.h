@@ -143,6 +143,10 @@ namespace DRS4_data {
       delete [] data;
     }
 
+    int write(std::ofstream *);
+
+    static size_t byteSize() { return sizeof(CHEADER) + sizeof(uint32_t) + kNumberOfBins*sizeof(uint16_t); }
+
     const CHEADER ch;
     uint32_t scaler;
     uint16_t *data;

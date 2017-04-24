@@ -334,7 +334,8 @@ void MonitorFrame::Start() {
     file->write(reinterpret_cast<const char*>(&(headers->BHeaders()->at(iboard)->board_serial_number)), 2);
     // Write time calibration
     for (int ichan=0; ichan<headers->ChTimes()->at(iboard).size(); ichan++) {
-      file->write(reinterpret_cast<const char*>(headers->ChTimes()->at(iboard).at(ichan)), kNumberOfBins*sizeof(float) );
+      file->write(reinterpret_cast<const char*>(&headers->ChTimes()->at(iboard).at(ichan)->ch), sizeof(CHEADER) );
+      file->write(reinterpret_cast<const char*>(headers->ChTimes()->at(iboard).at(ichan)->tbins), kNumberOfBins*sizeof(float) );
     }
   } // End loop over boards
   file->flush();
