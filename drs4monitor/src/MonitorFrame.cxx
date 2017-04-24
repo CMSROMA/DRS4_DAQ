@@ -61,19 +61,19 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
   Observables obs;
   for(int iobs=0; iobs<nObservables; iobs++) {
     kObservables kobs = static_cast<kObservables>(iobs);
-    histo[0][iobs] = new TH1F(Form("h1%d", iobs), Form("%s_{1}; %s_{1} (%s)", obs.Title(kobs), obs.Title(kobs), obs.Unit(kobs)), 100, opt->histolo[iobs], opt->histohi[iobs]);
-    histo[1][iobs] = new TH1F(Form("h2%d", iobs), Form("%s_{2}; %s_{2} (%s)", obs.Title(kobs), obs.Title(kobs), obs.Unit(kobs)), 100, opt->histolo[iobs], opt->histohi[iobs]);
+    histo[0][iobs] = new TH1F(Form("h1%d", iobs), Form("%s_{1}; %s_{1} (%s)", obs.Title(kobs), obs.Title(kobs), obs.Unit(kobs)), opt->histoNbins[iobs], opt->histolo[iobs], opt->histohi[iobs]);
+    histo[1][iobs] = new TH1F(Form("h2%d", iobs), Form("%s_{2}; %s_{2} (%s)", obs.Title(kobs), obs.Title(kobs), obs.Unit(kobs)), opt->histoNbins[iobs], opt->histolo[iobs], opt->histohi[iobs]);
   }
 
   eTot12 = new TH2F("eTot12", Form("eTot2 vs. eTot1; %s_{1} (%s); %s_{2} (%s)", obs.Title(eTot), obs.Unit(eTot), obs.Title(eTot), obs.Unit(eTot)),
-      (opt->histohi[eTot]-opt->histolo[eTot])/opt->_xRed, opt->histolo[eTot], opt->histohi[eTot],
-      (opt->histohi[eTot]-opt->histolo[eTot])/opt->_xRed, opt->histolo[eTot], opt->histohi[eTot]);
+      opt->histoNbins[eTot]/opt->_xRed, opt->histolo[eTot], opt->histohi[eTot],
+      opt->histoNbins[eTot]/opt->_xRed, opt->histolo[eTot], opt->histohi[eTot]);
   ePrompt12 = new TH2F("ePrompt12", Form("ePrompt2 vs. ePrompt1; %s_{1} (%s); %s_{2} (%s)", obs.Title(ePrompt), obs.Unit(ePrompt), obs.Title(ePrompt), obs.Unit(ePrompt)),
-      (opt->histohi[ePrompt]-opt->histolo[ePrompt])/opt->_xRed, opt->histolo[ePrompt], opt->histohi[ePrompt],
-      (opt->histohi[ePrompt]-opt->histolo[ePrompt])/opt->_xRed, opt->histolo[ePrompt], opt->histohi[ePrompt]);
+      opt->histoNbins[ePrompt]/opt->_xRed, opt->histolo[ePrompt], opt->histohi[ePrompt],
+      opt->histoNbins[ePrompt]/opt->_xRed, opt->histolo[ePrompt], opt->histohi[ePrompt]);
   time12 = new TH2F("time12", Form("t_{2} vs. t_{1}; %s_{1} (%s); %s_{2} (%s)", obs.Title(arrivalTime), obs.Unit(arrivalTime), obs.Title(arrivalTime), obs.Unit(arrivalTime)),
-      (opt->histohi[arrivalTime]-opt->histolo[arrivalTime])/opt->_xRed, opt->histolo[arrivalTime], opt->histohi[arrivalTime],
-      (opt->histohi[arrivalTime]-opt->histolo[arrivalTime])/opt->_xRed, opt->histolo[arrivalTime], opt->histohi[arrivalTime]);
+      opt->histoNbins[arrivalTime]/opt->_xRed, opt->histolo[arrivalTime], opt->histohi[arrivalTime],
+      opt->histoNbins[arrivalTime]/opt->_xRed, opt->histolo[arrivalTime], opt->histohi[arrivalTime]);
   time34 = new TH2F("time34", "t_{4} vs. t_{3}; t_{3} (ns); t_{4} (ns)", 100, 0., 100., 100, 0., 100.);
 
 

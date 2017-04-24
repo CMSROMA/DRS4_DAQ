@@ -124,18 +124,21 @@ int config::ParseOptions(std::ifstream *input)
       TString achan = line(TRegexp(Form("%s: ", obs->Name(static_cast<kObservables>(i)))));
       if(achan.Length() > 1) {
         TSubString lo = line(number_patt);
-        TString hi = line(number_patt, lo.Start()+lo.Length());
+        TSubString hi = line(number_patt, lo.Start()+lo.Length());
+        TString nchan = line(number_patt, hi.Start()+hi.Length());
         histolo[i] = TString(lo).Atoi();
         histohi[i] = TString(hi).Atoi();
-      if(histolo[i] == histohi[i]) {
-          std::cout << "Error parsing options: " << achan.Data() << " limits equal ("
-              << histolo[i] << ", " << histohi[i] << ")\n";
-          return -1;
-        }
+        histoNbins[i] = TString(nchan).Atoi();
+        if(histolo[i] == histohi[i]) {
+            std::cout << "Error parsing options: " << achan.Data() << " limits equal ("
+                << histolo[i] << ", " << histohi[i] << ")\n";
+            return -1;
+          }
         if(histolo[i] > histohi[i]) {
           short tmp = histolo[i]; histolo[i] = histohi[i];
           histohi[i] = tmp;
         }
+        if(histoNbins[i] == 0) { histoNbins[i] = 100 ; }
       } // (achan.Length() > 1)
     } // loop over observables
 
