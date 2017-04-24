@@ -275,4 +275,25 @@ namespace DRS4_data {
 
   }
 
+
+  int DRSHeaders::write(std::ofstream *file) const {
+
+    file->write(reinterpret_cast<const char*>(FHeader()), 4);
+    file->write(reinterpret_cast<const char*>(&DRS4_data::THEADER), 4);
+
+    for(int iboard=0; iboard<ChTimes()->size(); iboard++) {
+      // Write board header
+      file->write(BHeaders()->at(iboard)->bn, 2);
+      file->write(reinterpret_cast<const char*>(&(BHeaders()->at(iboard)->board_serial_number)), 2);
+      // Write time calibration
+      for (int ichan=0; ichan<ChTimes()->at(iboard).size(); ichan++) {
+        file->write(reinterpret_cast<const char*>(&ChTimes()->at(iboard).at(ichan)->ch), sizeof(CHEADER) );
+        file->write(reinterpret_cast<const char*>(ChTimes()->at(iboard).at(ichan)->tbins), kNumberOfBins*sizeof(float) );
+      }
+    } // End loop over boards
+    file->flush();
+    std::cout << "Wrote DRS headers." << std::endl;
+
+  }
+
 }

@@ -324,22 +324,7 @@ void MonitorFrame::Start() {
   std::cout << "Writing headers and time calibration to file." << std::endl;
 
   headers = DRS4_data::DRSHeaders::MakeDRSHeaders(drs);
-
-  file->write(reinterpret_cast<const char*>(headers->FHeader()), 4);
-  file->write(reinterpret_cast<const char*>(&DRS4_data::THEADER), 4);
-
-  for(int iboard=0; iboard<headers->ChTimes()->size(); iboard++) {
-    // Write board header
-    file->write(headers->BHeaders()->at(iboard)->bn, 2);
-    file->write(reinterpret_cast<const char*>(&(headers->BHeaders()->at(iboard)->board_serial_number)), 2);
-    // Write time calibration
-    for (int ichan=0; ichan<headers->ChTimes()->at(iboard).size(); ichan++) {
-      file->write(reinterpret_cast<const char*>(&headers->ChTimes()->at(iboard).at(ichan)->ch), sizeof(CHEADER) );
-      file->write(reinterpret_cast<const char*>(headers->ChTimes()->at(iboard).at(ichan)->tbins), kNumberOfBins*sizeof(float) );
-    }
-  } // End loop over boards
-  file->flush();
-  std::cout << "Done writing headers." << std::endl;
+  headers->write(file);
 
   DoDraw(true);
 

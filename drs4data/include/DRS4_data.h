@@ -201,6 +201,8 @@ namespace DRS4_data {
     const std::vector<BHEADER*>* BHeaders() const { return &bheaders; }
     const ChannelTimes* ChTimes() const { return &chTimes; }
 
+    int write(std::ofstream *) const ;
+
   private:
     DRSHeaders(const FHEADER, std::vector<BHEADER*>, ChannelTimes*);
 
