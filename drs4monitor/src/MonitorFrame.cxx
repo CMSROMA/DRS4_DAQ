@@ -305,8 +305,6 @@ void MonitorFrame::Start() {
   filename += ".dat";
 
 
-  rate = new MonitorFrame::RateEstimator();
-  rate->Push(0, 1.e-9); // One false time value to avoid division by zero
   timer.Start();
   timeLastSave = 0;
   iEvtProcessed=0;
@@ -326,6 +324,8 @@ void MonitorFrame::Start() {
   headers = DRS4_data::DRSHeaders::MakeDRSHeaders(drs);
   headers->write(file);
 
+  rate = new MonitorFrame::RateEstimator();
+  rate->Push(0, 1.e-9); // One false time value to avoid division by zero
   DoDraw(true);
 
   /*** Start writer ***/

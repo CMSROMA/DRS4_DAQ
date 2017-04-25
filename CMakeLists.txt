@@ -44,6 +44,7 @@ add_subdirectory (drs4data)
 SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 add_subdirectory (drs4)
 add_subdirectory (drs4daq)
+add_subdirectory (drs4analysis)
 add_subdirectory (drs4monitor)
 
 

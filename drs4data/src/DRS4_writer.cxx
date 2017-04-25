@@ -147,7 +147,7 @@ void DRS4_writer::run( DRS4_writer* w, const unsigned nEvtMax) {
     } // Loop over the boards
 
     w->fifo->write(w->event); // Adding the pointer to fifo.
-    w->event = NULL;          // Here we promise not to accidentally write in this raw event
+    w->event = NULL;          // Guarantee not to accidentally write via w->event
     w->iEvent++;
     if (w->iEvent%100 == 0) {
       std::cout << "Acquired event #" << w->iEvent << std::endl;
