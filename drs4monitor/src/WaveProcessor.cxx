@@ -220,6 +220,34 @@ void WaveProcessor::PrintCurrentHist(int ch) const {
 //////////////////////////////// ANALYSIS //////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+Float_t WaveProcessor::GetFWHM(int Ch) {
+
+	TH1F* AnalysisHist;
+	int leftFWHM(0), rightFWHM(0), maxBin(0); 
+	int i(0);
+	Float_t FWHM;
+	
+	switch (Ch) {
+		case 1: AnalysisHist = TempShapeCh1; break;
+		case 2: AnalysisHist = TempShapeCh2; break;
+		case 3: AnalysisHist = TempShapeCh3; break;
+		case 4: AnalysisHist = TempShapeCh4; break;
+	}
+	
+	maxBin = AnalysisHist->FindMax();
+	
+	while ((leftFWHM!=0)&&(rightFWHM!=0)){
+		i++;
+		if ((maxBin-i<0)||(maxBin+i>1024)) break; // couldn't find FWHM, will return 0 
+		if (leftFWHM==0) leftFWHM = ((AnalysisHist->GetBinContent(maxBin-i))<(AnalysisHist->GetBinContent(maxBin)/2.))?(maxBin-i):leftFWHM ;
+		if (rightFWHM==0) rightFWHM= ((AnalysisHist->GetBinContent(maxBin+i))<(AnalysisHist->GetBinContent(maxBin)/2.))?(maxBin+i):rightFWHM ;
+	}	
+	FWHM = AnalysisHist->GetBinCenter(rightFWHM) - AnalysisHist->GetBinCenter(leftFWHM);
+	
+	return FWHM;
+
+}
+
 
 ///////////// give_time_n_amplitude /////////////////////
 
@@ -378,13 +406,13 @@ Observables* WaveProcessor::ProcessOnline( Float_t* RawTimeArr,
 	//for(i=0; i<RawArrLength; i++) RawTempShape -> SetBinContent((i+RawTrigCell)%RawArrLength, RawVoltArr[i]);
 	for (i=0; i<RawArrLength; i++) output->hist -> Fill(RawTimeArr[i], -RawVoltArr[i]);
 	
-  int ArrivalTimeBin = output->hist->FindFirstBinAbove(threshold); // bin should be transformed to ns according to axis
-	if (ArrivalTimeBin==-1) return output; // I guess will be 0 and the event ignored
-	
+
 	// baseLine must be calculated first.
 	output->Value(baseLine) = output->hist->Integral(0, output->hist->FindBin(historyLen-trigDelay), "width") / (historyLen-trigDelay) ;
-
 	output->Value(baseLineRMS) = CalcHistRMS(output->hist, 1, output->hist->FindBin(historyLen-trigDelay));
+	
+	int ArrivalTimeBin = output->hist->FindFirstBinAbove(threshold+output->Value(baseLine)); // bin should be transformed to ns according to axis
+	if (ArrivalTimeBin==-1) return output; // I guess will be 0 and the event ignored
 
 	// baseline subtraction
 	TH1F *tmpHist = static_cast<TH1F*>(output->hist->Clone()); // baseLine should be subtracted in order to get time of 90% energy deposition of real signal (baseLine excluded)
