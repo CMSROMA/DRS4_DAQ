@@ -353,10 +353,10 @@ Observables *WaveProcessor::ProcessOnline( Float_t* RawTimeArr,
 }
 
 Observables* WaveProcessor::ProcessOnline( Float_t* RawTimeArr,
-                                                  Float_t* RawVoltArr,
-                                                  Int_t RawArrLength,
-                                                  float threshold,
-                                                  float trigDelay)
+                                           Float_t* RawVoltArr,
+                                           Int_t RawArrLength,
+                                           float threshold,
+                                           float trigDelay)
 {
   Observables *output = new Observables;
 	int i;

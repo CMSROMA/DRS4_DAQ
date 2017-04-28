@@ -16,9 +16,13 @@
 
 #include "TGraph.h"
 #include "TH1F.h"
+#include "TFile.h"
+#include "TTree.h"
 #include "TCanvas.h"
 #include "TStyle.h"
 #include "TString.h"
+
+#include "WaveProcessor.h"
 
 
 typedef struct {
@@ -71,9 +75,9 @@ int main(int argc, const char * argv[])
    
    unsigned int scaler;
    unsigned short voltage[1024];
-   double waveform[16][4][1024], time[16][4][1024];
+   float waveform[16][4][1024], time[16][4][1024];
    float bin_width[16][4][1024];
-   int i, j, b, chn, n, chn_index, n_boards;
+   int i, j, b, chn, iEvt, chn_index, n_boards;
    double t1, t2, dt;
    char filename[256];
 
@@ -149,6 +153,7 @@ int main(int argc, const char * argv[])
    ndt = 0;
    sumdt = sumdt2 = 0;
    
+   /*** Prepare oscillogram plots ***/
    TCanvas c("can", "cancan", 800, 600);
    gStyle->SetPaperSize(18, 12);
    gStyle->SetLabelSize(0.06, "XY");
@@ -157,23 +162,45 @@ int main(int argc, const char * argv[])
    gStyle->SetPadBottomMargin(0.12);
    c.Divide(2, 2, .01, .01);
    TH1F frame("frame", "frame; t (ns); A (mV)", 10, 0., 200);
-   frame.SetMinimum(-200);
-   frame.SetMaximum(20);
+   frame.SetMinimum(-500);
+   frame.SetMaximum(50);
    frame.SetLineColor(kGray);
    frame.SetStats(false);
    TString pdfname(filename);
    if (pdfname.EndsWith(".dat")) pdfname.Resize(pdfname.Sizeof() - 5);
    pdfname += ".pdf";
-   bool firstpage = true;
+   bool firstpage = true, lastpage = false;
+
+   /*** Prepare tree ***/
+
+   TString rfname(filename);
+   if (rfname.EndsWith(".dat")) rfname.Resize(pdfname.Sizeof() - 5);
+   rfname += ".root";
+   TFile file(rfname, "RECREATE");
+
+   unsigned nCh = 4;
+   DRS4_data::Observables obs[nCh];
+   TTree events("events", "events");
+
+   for (unsigned iCh=0; iCh<nCh; iCh++) {
+
+     for (unsigned iObs=0; iObs<DRS4_data::nObservables; iObs++) {
+       const char *varname = Form("%s_%d", obs[iCh].Name(DRS4_data::kObservables(iObs)), iCh);
+       events.Branch(varname, &obs[iCh].Value(DRS4_data::kObservables(iObs)), varname);
+     }
+   }
+
 
    // loop over all events in the data file
-   for (n=0 ; n<20; n++) {
+   for (iEvt=0 ; iEvt<100; iEvt++) {
       // read event header
       i = (int)fread(&eh, sizeof(eh), 1, f);
       if (i < 1)
          break;
-      
-      printf("Found event #%d at %d s %d ms\n", eh.event_serial_number, eh.second, eh.millisecond);
+
+      if (iEvt%100 == 0) {
+        printf("Found event #%d at %d s %d ms\n", eh.event_serial_number, eh.second, eh.millisecond);
+      }
       
       // loop over all boards in data file
       for (b=0 ; b<n_boards ; b++) {
@@ -211,37 +238,61 @@ int main(int argc, const char * argv[])
             
             for (i=0 ; i<1024 ; i++) {
                // Data are encoded in units of 0.1 mV
-               waveform[b][chn_index][i] = (double(short(voltage[i])) / 10.);
+               waveform[b][chn_index][i] = (float(short(voltage[i])) / 10.);
                
                // calculate time for this cell
                for (j=0,time[b][chn_index][i]=0 ; j<i ; j++)
                   time[b][chn_index][i] += bin_width[b][chn_index][(j+tch.trigger_cell) % 1024];
             }
 
-            TGraph *gr = new TGraph(1024, time[b][chn_index], waveform[b][chn_index]);
+            DRS4_data::Observables *tmpObs = WaveProcessor::ProcessOnline(time[b][chn_index], waveform[b][chn_index], 1024, 30., 50.);
 
-            if (gr->IsZombie()) {
-              printf("Zombie.\n");
-              exit(0);
+            obs[chn] = *tmpObs;
+
+            delete tmpObs; tmpObs = NULL;
+
+
+            if (iEvt < 20) {
+              TGraph *gr = new TGraph(1024, time[b][chn_index], waveform[b][chn_index]);
+
+              if (gr->IsZombie()) {
+                printf("Zombie.\n");
+                exit(0);
+              }
+              c.cd(chn_index+1);
+              frame.SetTitle(Form("Channel %d", chn_index+1));
+              frame.DrawCopy();
+              gr->Draw("l");
             }
-            c.cd(chn_index+1);
-            frame.SetTitle(Form("Channel %d", chn_index+1));
-            frame.DrawCopy();
-            gr->Draw("l");
 
-         }
+         } // Loop over channels
          
-         if(firstpage) {
-           c.Print(TString(pdfname + "(").Data());
-         }
-         else {
-           c.Print(pdfname.Data());
-         }
+
+         events.Fill();
+
+         if (iEvt < 20) {
+           if (iEvt == 0) {
+             c.Print(TString(pdfname + "(").Data());
+           }
+           else {
+             if (iEvt == 19) {
+               c.Print(TString(pdfname + ")"));
+             }
+             else {
+               c.Print(pdfname.Data());
+             }
+           }
+         } // if (iEvt < 20) (for printing pdf)
 
       } // Loop over the boards
    } // Loop over events
    
-   c.Print(TString(pdfname + ")"));
+
+ //  file.Append(&events, true);
+ //  events.GetCurrentFile()->Write();
+//   events.Write();
+   file.Write();
+   file.Close();
 
 
    return 1;

@@ -60,11 +60,24 @@ namespace DRS4_data {
     }
 
     float& Value(kObservables obs) { return observables.at(obs).value; }
+    float Value(kObservables obs) const { return observables.at(obs).value; }
     const char * Name(kObservables obs) const { return observables.at(obs).name.Data(); }
     const char * Title(kObservables obs) const { return observables.at(obs).title.Data(); }
     const char * Unit(kObservables obs) const { return observables.at(obs).unit.Data(); }
 
     unsigned NObservables() const { return observables.size(); }
+
+    Observables& operator =(const Observables& other) {
+
+      if (this == &other) { return *this; }
+
+      for (unsigned iObs=0; iObs<nObservables; iObs++) {
+        Value(static_cast<kObservables>(iObs))
+            = other.Value(static_cast<kObservables>(iObs));
+      }
+
+      return *this;
+    };
 
     TH1F* hist;
 
