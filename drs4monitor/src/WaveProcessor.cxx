@@ -234,7 +234,7 @@ Float_t WaveProcessor::GetFWHM(int Ch) {
 		case 4: AnalysisHist = TempShapeCh4; break;
 	}
 	
-	maxBin = AnalysisHist->FindMax();
+	maxBin = AnalysisHist->GetMaximumBin();
 	
 	while ((leftFWHM!=0)&&(rightFWHM!=0)){
 		i++;
@@ -410,9 +410,16 @@ Observables* WaveProcessor::ProcessOnline( Float_t* RawTimeArr,
 	// baseLine must be calculated first.
 	output->Value(baseLine) = output->hist->Integral(0, output->hist->FindBin(historyLen-trigDelay), "width") / (historyLen-trigDelay) ;
 	output->Value(baseLineRMS) = CalcHistRMS(output->hist, 1, output->hist->FindBin(historyLen-trigDelay));
+	output->Value(maxVal) = output->hist->GetBinContent(output->hist->GetMaximumBin()) - output->Value(baseLine);
 	
 	int ArrivalTimeBin = output->hist->FindFirstBinAbove(threshold+output->Value(baseLine)); // bin should be transformed to ns according to axis
-	if (ArrivalTimeBin==-1) return output; // I guess will be 0 and the event ignored
+	if (ArrivalTimeBin==-1) {
+	  output->Value(arrivalTime) = 0.;
+	}
+	else {
+	  output->Value(arrivalTime) = output->hist->GetXaxis()->GetBinCenter(ArrivalTimeBin);
+	}
+
 
 	// baseline subtraction
 	TH1F *tmpHist = static_cast<TH1F*>(output->hist->Clone()); // baseLine should be subtracted in order to get time of 90% energy deposition of real signal (baseLine excluded)
@@ -421,10 +428,9 @@ Observables* WaveProcessor::ProcessOnline( Float_t* RawTimeArr,
 	TH1F* hcumul = static_cast<TH1F*>(tmpHist->GetCumulative());
 	hcumul->Scale(1/tmpHist->Integral()); // normalize cumulative histogram to 1
 	
-	output->Value(arrivalTime) = output->hist->GetXaxis()->GetBinCenter(ArrivalTimeBin);
+
 	output->Value(eTot) = output->hist->Integral(ArrivalTimeBin, output->hist->GetXaxis()->GetNbins(), "width")
 				- output->Value(baseLine)*(output->hist->GetXaxis()->GetBinUpEdge(1023)- output->Value(arrivalTime));
-	output->Value(maxVal) = output->hist->GetMaximum() - output->Value(baseLine);
 	output->Value(dt90) = output->hist->GetXaxis()->GetBinCenter(hcumul->FindFirstBinAbove(0.9))-output->Value(arrivalTime);
 	output->Value(dt70) = output->hist->GetXaxis()->GetBinCenter(hcumul->FindFirstBinAbove(0.7))-output->Value(arrivalTime);
 	output->Value(dt50) = output->hist->GetXaxis()->GetBinCenter(hcumul->FindFirstBinAbove(0.5))-output->Value(arrivalTime);

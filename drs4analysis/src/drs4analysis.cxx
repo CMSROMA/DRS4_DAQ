@@ -245,7 +245,7 @@ int main(int argc, const char * argv[])
                   time[b][chn_index][i] += bin_width[b][chn_index][(j+tch.trigger_cell) % 1024];
             }
 
-            DRS4_data::Observables *tmpObs = WaveProcessor::ProcessOnline(time[b][chn_index], waveform[b][chn_index], 1024, 30., 50.);
+            DRS4_data::Observables *tmpObs = WaveProcessor::ProcessOnline(time[b][chn_index], waveform[b][chn_index], 1024, 10., 50.);
 
             obs[chn] = *tmpObs;
 
