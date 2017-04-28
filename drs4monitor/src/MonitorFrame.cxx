@@ -104,8 +104,8 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
   fCanvasOsc->GetListOfPrimitives()->SetOwner();
   TH1F *oscFrame = new TH1F("OscFrame", "Oscillograms; t (ns); A (mV)", 10, 0., 200.);
   oscFrame->SetBit(kCanDelete, false);
-  oscFrame->SetMinimum(-200);
-  oscFrame->SetMaximum(200);
+  oscFrame->SetMinimum(-550);
+  oscFrame->SetMaximum( 50);
   oscFrame->SetStats(false);
   oscFrame->Draw();
   oscFrame=NULL;
