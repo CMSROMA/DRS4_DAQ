@@ -106,6 +106,8 @@ class WaveProcessor {
     WaveformParam give_waveform_parameters(int);  // gives time and amplitude of a given channel
     DRS4_data::Observables* ProcessOnline(Float_t* , Float_t* , Int_t);
     static DRS4_data::Observables* ProcessOnline(Float_t* time, Float_t* amplitude, Int_t length, float threshold, float trigDelay);
+
+    Float_t WaveProcessor::GetFWHM(int);
     
     private:
     
