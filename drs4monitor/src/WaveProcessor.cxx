@@ -1,4 +1,5 @@
 #include "WaveProcessor.h"
+#include "TFitResult.h"
 
 using namespace DRS4_data;
 
@@ -384,11 +385,10 @@ Observables* WaveProcessor::ProcessOnline( Float_t* RawTimeArr,
                                            Float_t* RawVoltArr,
                                            Int_t RawArrLength,
                                            float threshold,
-                                           float trigDelay)
+                                           float baselineWidth)
 {
   Observables *output = new Observables;
 	int i;
-	static float historyLen = 185;
 
 //	std::cout << "Making RawTempShape." << std::endl;
   output->hist = new TH1F("RawTempShape", "RawTempShape", RawArrLength - 1, RawTimeArr); // nonequidistand histogram
@@ -408,10 +408,13 @@ Observables* WaveProcessor::ProcessOnline( Float_t* RawTimeArr,
 	
 
 	// baseLine must be calculated first.
-	output->Value(baseLine) = output->hist->Integral(0, output->hist->FindBin(historyLen-trigDelay), "width") / (historyLen-trigDelay) ;
-	output->Value(baseLineRMS) = CalcHistRMS(output->hist, 1, output->hist->FindBin(historyLen-trigDelay));
+	int blEndBin = output->hist->FindBin(baselineWidth);
+	//MeanAndRMS(output->hist, 1, blEndBin, output->Value(baseLine), output->Value(baseLineRMS));
+	output->Value(baseLine) = output->hist->Integral(1, blEndBin, "width") / baselineWidth ;
+  output->Value(baseLineRMS) = CalcHistRMS(output->hist, 1, output->hist->FindBin(baselineWidth));
 	output->Value(maxVal) = output->hist->GetBinContent(output->hist->GetMaximumBin()) - output->Value(baseLine);
-	
+
+/*
 	int ArrivalTimeBin = output->hist->FindFirstBinAbove(threshold+output->Value(baseLine)); // bin should be transformed to ns according to axis
 	if (ArrivalTimeBin==-1) {
 	  output->Value(arrivalTime) = 0.;
@@ -419,6 +422,9 @@ Observables* WaveProcessor::ProcessOnline( Float_t* RawTimeArr,
 	else {
 	  output->Value(arrivalTime) = output->hist->GetXaxis()->GetBinCenter(ArrivalTimeBin);
 	}
+*/
+	output->Value(arrivalTime) = ArrivalTime(output->hist, threshold, output->Value(baseLine), 0);
+	int ArrivalTimeBin = output->hist->FindBin(output->Value(arrivalTime));
 
 
 	// baseline subtraction
@@ -428,15 +434,16 @@ Observables* WaveProcessor::ProcessOnline( Float_t* RawTimeArr,
 	TH1F* hcumul = static_cast<TH1F*>(tmpHist->GetCumulative());
 	hcumul->Scale(1/tmpHist->Integral()); // normalize cumulative histogram to 1
 	
+	int firstIntegrationBin = max(1, ArrivalTimeBin - 5);
+  int lastIntegrationBin = output->hist->GetXaxis()->GetNbins();
+  int lastPromptIntegBin = output->hist->FindBin(output->Value(arrivalTime) + 10.);
 
-	output->Value(eTot) = output->hist->Integral(ArrivalTimeBin, output->hist->GetXaxis()->GetNbins(), "width")
-				- output->Value(baseLine)*(output->hist->GetXaxis()->GetBinUpEdge(1023)- output->Value(arrivalTime));
+	output->Value(eTot) = tmpHist->Integral(firstIntegrationBin, lastIntegrationBin, "width");
 	output->Value(dt90) = output->hist->GetXaxis()->GetBinCenter(hcumul->FindFirstBinAbove(0.9))-output->Value(arrivalTime);
 	output->Value(dt70) = output->hist->GetXaxis()->GetBinCenter(hcumul->FindFirstBinAbove(0.7))-output->Value(arrivalTime);
 	output->Value(dt50) = output->hist->GetXaxis()->GetBinCenter(hcumul->FindFirstBinAbove(0.5))-output->Value(arrivalTime);
 	
-	output->Value(ePrompt) = output->hist->Integral(ArrivalTimeBin, output->hist->FindBin(output->Value(arrivalTime) + 10.), "width")
-	- output->Value(baseLine)*10. ; // Integral of first 10 ns of signal
+	output->Value(ePrompt) = tmpHist->Integral(firstIntegrationBin, lastPromptIntegBin, "width");
 
 	delete hcumul;
 	delete tmpHist;
@@ -456,25 +463,151 @@ void WaveProcessor::reset_temporary_histograms(){
 	}
 
 float WaveProcessor::CalcHistRMS(const TH1F *hist, int first, int last){
-	TH1F *RMShist;
-	Float_t width;
-	
-	Double_t max = hist->GetMaximum();
-	Double_t min = hist->GetMaximum();
-	
-	RMShist = new TH1F("RMShist", "RMShist", 100, min, max);
-	
-	for(int i=first; i<=last; i++){
-		width = hist->GetXaxis()->GetBinWidth(i);
-		//widthSum+=width;
-		RMShist->Fill(hist->GetBinContent(i), 1/width); // longer integral measurement carries less of information about the time variation
-	}
-	//RMShist->Scale(1/widthSum); // not necessary
-	
-	float rms = RMShist->GetRMS();
-	delete RMShist;
-	return rms;
-	
+  TH1F *RMShist;
+  Float_t width;
+
+  Double_t max = hist->GetMaximum();
+  Double_t min = hist->GetMaximum();
+
+  RMShist = new TH1F("RMShist", "RMShist", 100, min, max);
+
+  for(int i=first; i<=last; i++){
+    width = hist->GetXaxis()->GetBinWidth(i);
+    RMShist->Fill(hist->GetBinContent(i)); // longer integral measurement carries less of information about the time variation
+  }
+
+  float rms = RMShist->GetRMS();
+  delete RMShist;
+  return rms;
+
 }
 
+
+float WaveProcessor::MeanAndRMS(const TH1F *hist, int first, int last, float &mean, float &rms){
+
+  if ( !hist ) return -1.;
+  if ( first < 1 || first > hist->GetNbinsX() || last < 1 || last > hist->GetNbinsX() ) {
+    return -1;
+  }
+  if ( last < first ) {
+    int temp = first;
+    first = last;
+    last = temp;
+  }
+
+  float sum = 0, sumSq = 0;
+
+  for(int i=first; i<=last; i++){
+    float c = hist->GetBinContent(i);
+    sum += c;
+    sumSq += c*c;
+  }
+
+  int nBins = (last - first + 1);
+  mean = sum / nBins;
+  float meanSq = sumSq / nBins;
+  rms = sqrt( meanSq - mean*mean );
+  return mean;
+
+}
+
+
+float WaveProcessor::ArrivalTime(TH1F* hist, float threshold, float baseline, float risetime){
+
+  if ( !hist ) return -1.;
+
+  int maxBin = hist->GetMaximumBin();
+  float maxVal = hist->GetBinContent(maxBin) - baseline;
+
+  if (maxVal < threshold) return -1.;
+
+  float tt1 = 0;
+  int nBint1 = 0;
+
+  for (int ibin=1; ibin<maxBin; ibin++) {
+
+    if (hist->GetBinContent(ibin) - baseline > threshold) {
+      tt1 = hist->GetBinLowEdge(ibin);
+      nBint1 = ibin;
+      break;
+    }
+  }
+
+  if (0.9*maxVal < threshold) {
+    return tt1 - risetime;
+  }
+
+  if (maxVal < 2*threshold) {
+
+    for (int ibin=nBint1; ibin<maxBin; ibin++) {
+
+      if (hist->GetBinContent(ibin) - baseline > 0.9*maxVal) {
+        return hist->GetBinLowEdge(ibin) - risetime;
+      }
+    }
+
+  } // maxVal < 2*threshold
+
+  /*** Linear fit for tall signals ***/
+
+  float endfit = 0;
+  int endFitBin = 1;
+  float startfit = 0;
+  int startFitBin = 1;
+
+  for (int ibin=nBint1; ibin<maxBin; ibin++) {
+    if (hist->GetBinContent(ibin) - baseline > maxVal/2) {
+      endfit = hist->GetBinLowEdge(ibin);
+      endFitBin = ibin;
+      break;
+    }
+  }
+
+  if (maxVal < 4*threshold) {
+    startfit = tt1;
+    startFitBin = nBint1;
+  }
+  else {
+    for (int ibin=nBint1; ibin<maxBin; ibin++) {
+      if (hist->GetBinContent(ibin) - baseline > maxVal/4) {
+        startfit = hist->GetBinLowEdge(ibin);
+        startFitBin = ibin;
+        break;
+      }
+    }
+  } // Selection startfit
+
+/*
+  TFitResultPtr pfit = hist->Fit("pol1", "QNS", "", startfit, endfit);
+  return (baseline - pfit->Parameter(0)) / pfit->Parameter(1);
+*/
+
+  float sumv=0, sumt=0;
+
+  for (int ibin=startFitBin; ibin<endFitBin; ibin++) {
+    sumv += hist->GetBinContent(ibin);
+    sumt += hist->GetBinLowEdge(ibin);
+  }
+
+  float t0 = sumt / (endFitBin - startFitBin);
+  float v0 = sumv / (endFitBin - startFitBin);
+
+  float sumWslope=0, sumW=0;
+  for (int ibin=startFitBin; ibin<endFitBin; ibin++) {
+    float dv = hist->GetBinContent(ibin) - v0;
+    float dt = hist->GetBinLowEdge(ibin) - t0;
+    float dd = sqrt(dv*dv+dt*dt);
+    sumWslope += (dv/dt)*dd;
+    sumW += dd;
+/*    float absdt, sgndt;
+    if (dt>0) { absdt =  dt; sgndt =  1.; }
+    else      { absdt = -dt; sgndt = -1.; }
+    sumdv += () / absdt;
+    sumdt += absdt;*/
+  }
+
+  float slope = sumWslope / sumW;
+
+  return t0 ; //- (v0 - baseline) / slope;
+}
 

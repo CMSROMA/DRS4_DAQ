@@ -112,6 +112,8 @@ class WaveProcessor {
     private:
     
     static float CalcHistRMS(const TH1F*, int, int );
+    static float MeanAndRMS(const TH1F*, int first, int last, float &mean, float &rms);
+    static float ArrivalTime(TH1F*, float threshold, float baseline, float risetime);
     
     float triggerHeight;
     float delay;

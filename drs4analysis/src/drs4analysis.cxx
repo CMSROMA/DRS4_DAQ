@@ -161,6 +161,10 @@ int main(int argc, const char * argv[])
    gStyle->SetPadLeftMargin(0.12);
    gStyle->SetPadBottomMargin(0.12);
    c.Divide(2, 2, .01, .01);
+   c.GetPad(1)->SetGrid(1, 0);
+   c.GetPad(2)->SetGrid(1, 0);
+   c.GetPad(3)->SetGrid(1, 0);
+   c.GetPad(4)->SetGrid(1, 0);
    TH1F frame("frame", "frame; t (ns); A (mV)", 10, 0., 200);
    frame.SetMinimum(-500);
    frame.SetMaximum(50);
@@ -192,7 +196,7 @@ int main(int argc, const char * argv[])
 
 
    // loop over all events in the data file
-   for (iEvt=0 ; iEvt<100; iEvt++) {
+   for (iEvt=0 ; iEvt<1000; iEvt++) {
       // read event header
       i = (int)fread(&eh, sizeof(eh), 1, f);
       if (i < 1)
@@ -245,7 +249,9 @@ int main(int argc, const char * argv[])
                   time[b][chn_index][i] += bin_width[b][chn_index][(j+tch.trigger_cell) % 1024];
             }
 
-            DRS4_data::Observables *tmpObs = WaveProcessor::ProcessOnline(time[b][chn_index], waveform[b][chn_index], 1024, 10., 50.);
+            float blw = 30.;
+            if (chn_index < 2) blw = 40;
+            DRS4_data::Observables *tmpObs = WaveProcessor::ProcessOnline(time[b][chn_index], waveform[b][chn_index], 1024, 10., blw);
 
             obs[chn] = *tmpObs;
 
@@ -288,9 +294,6 @@ int main(int argc, const char * argv[])
    } // Loop over events
    
 
- //  file.Append(&events, true);
- //  events.GetCurrentFile()->Write();
-//   events.Write();
    file.Write();
    file.Close();
 
