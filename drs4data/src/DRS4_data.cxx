@@ -296,4 +296,130 @@ namespace DRS4_data {
 
   }
 
-}
+  // Spike removal adapted from class Osci in DRS software
+  void RemoveSpikes(short wf[4][kNumberOfBins], short threshold, short spikeWidth)
+  {
+     int spikePos[kNumberOfBins];
+     memset(spikePos, 0, sizeof(spikePos));
+
+     const unsigned nChan = 4;
+     int sp[nChan][10];
+     int rsp[10];
+     int n_sp[nChan], n_rsp;
+     int  nNeighbor, nSymmetric;
+
+
+     memset(sp, 0, sizeof(sp));
+     memset(n_sp, 0, sizeof(n_sp));
+     memset(rsp, 0, sizeof(rsp));
+     n_rsp = 0;
+
+     /* find spikes with a high-pass filter */
+     for (unsigned ibin=0 ; ibin<kNumberOfBins-1 ; ibin++) {
+        for (unsigned iChan=0 ; iChan<nChan ; iChan++) {
+
+           short diff = - wf[iChan][ibin] / 2;
+           for (unsigned spikeBin=1; spikeBin<=spikeWidth; spikeBin++) {
+                        diff += wf[iChan][(ibin+spikeBin) % kNumberOfBins] / spikeWidth;
+           }
+           diff -= wf[iChan][(ibin+spikeWidth+1) % kNumberOfBins] / 2;
+
+           if (diff > threshold) {
+              if (n_sp[iChan] < 20) // record maximum of 20 spikes
+                 sp[iChan][n_sp[iChan]++] = ibin;
+              else {
+                 std::cout << "Too many spikes -> something wrong." << std::endl;
+                 return;        //
+              }
+              spikePos[ibin]++;
+           }
+        }
+     }
+
+     /* find spikes at cell #0 and #1023
+     for (unsigned iChan=0 ; iChan<nChan ; iChan++) {
+        short diff = 0;
+        for (unsigned spikeBin=1; spikeBin<=spikeWidth; spikeBin++) {
+          diff += wf[iChan][spikeBin];
+        }
+        diff -= 2*wf[iChan][spikeWidth+1];
+        if ( abs(diff) > threshold) {
+           if (n_sp[iChan] < 10)
+              sp[iChan][n_sp[iChan]++] = -1; // marking bin "before" first spike bin as location of spike,
+        }
+        diff = 0;
+        for (unsigned spikeBin=kNumberOfBins-spikeWidth; spikeBin<kNumberOfBins; spikeBin++) {
+          diff += wf[iChan][spikeBin];
+        }
+        diff -= 2*wf[iChan][kNumberOfBins-spikeWidth-1];
+
+        if (abs(diff) > threshold) {
+           if (n_sp[iChan] < 10)
+              sp[iChan][n_sp[iChan]++] = kNumberOfBins-spikeWidth-1;
+        }
+     }*/
+
+     /* go through all spikes and look for neighbors */
+     for (unsigned iChan=0 ; iChan<nChan ; iChan++) {
+        for (unsigned ispike =0 ; ispike<n_sp[iChan] ; ispike++) {
+
+           /* check if there is a spike at the same position in any other channels */
+           for (unsigned jChan=nNeighbor=0 ; jChan<nChan ; jChan++)
+              if (iChan != jChan) {
+                 for (unsigned lspike=0 ; lspike<n_sp[jChan] ; lspike++)
+                    if (sp[iChan][ispike] == sp[jChan][lspike]) {
+                       nNeighbor++;
+                       break;
+                    }
+              }
+
+           /* if at least two matching spikes, treat this as a real spike */
+           if (nNeighbor >= 2) {
+              // Check if this spike is already registered as real
+              unsigned jspike;
+              for (jspike=0 ; jspike<n_rsp ; jspike++)
+                 if (rsp[jspike] == sp[iChan][ispike])
+                    break;
+              // If not registered, register
+              if (n_rsp < 10 && jspike == n_rsp)
+                 rsp[n_rsp++] = sp[iChan][ispike];
+           }
+        }
+     } // End search for neighbors
+
+
+     /* Correct spikes */
+     for (unsigned ispike=0 ; ispike<n_rsp ; ispike++) {
+        for (unsigned iChan=0 ; iChan<nChan ; iChan++) {
+
+
+        /*   if (ispike < n_rsp-1 && rsp[ispike] == 0 && rsp[ispike+1] == kNumberOfBins-4) {
+              // remove double spike
+              std::cout << "Correcting double spike.\n";
+              unsigned jbin = rsp[ispike] > rsp[ispike+1] ? rsp[ispike+1] : rsp[ispike];
+              short x = wf[iChan][(jbin+1) % kNumberOfBins];
+              short y = wf[iChan][(jbin+6) % kNumberOfBins];
+               wf[iChan][(jbin+2) % kNumberOfBins] = x + 1*(y-x)/5;
+               wf[iChan][(jbin+3) % kNumberOfBins] = x + 2*(y-x)/5;
+               wf[iChan][(jbin+4) % kNumberOfBins] = x + 3*(y-x)/5;
+               wf[iChan][(jbin+5) % kNumberOfBins] = x + 4*(y-x)/5;
+           } else */{
+              /* remove single spike */
+              short x = wf[iChan][rsp[ispike]];
+              short y = wf[iChan][(rsp[ispike]+spikeWidth+1) % kNumberOfBins];
+
+              double slope = static_cast<double>(y-x)/(spikeWidth+1);
+              for (unsigned spikeBin=1; spikeBin<=spikeWidth; spikeBin++) {
+                wf[iChan][(rsp[ispike]+spikeBin) % kNumberOfBins] = static_cast<short>(x + spikeBin*slope + .5);
+              }
+           }
+        } // Loop over iChan
+//        if (ispike < n_rsp-1 && rsp[ispike] == 0 && rsp[ispike+1] == kNumberOfBins-4)
+  //         ispike++; // skip second half of double spike
+     } // Loop over ispike
+
+
+  } // RemoveSpikes()
+
+
+} // namespace DRS4_data

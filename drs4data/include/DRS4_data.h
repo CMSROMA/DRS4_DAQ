@@ -211,6 +211,8 @@ namespace DRS4_data {
     ChannelTimes chTimes;
   };
 
+  void RemoveSpikes(short wf[4][kNumberOfBins], short threshold, short spikeWidth);
+
 } // namespace DRS4_data
 
 

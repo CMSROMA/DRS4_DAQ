@@ -23,6 +23,7 @@
 #include "TString.h"
 
 #include "WaveProcessor.h"
+#include "DRS4_data.h"
 
 
 typedef struct {
@@ -74,10 +75,11 @@ int main(int argc, const char * argv[])
    CHEADER  ch;
    
    unsigned int scaler;
-   unsigned short voltage[1024];
+   short voltage[4][1024];
    float waveform[16][4][1024], time[16][4][1024];
    float bin_width[16][4][1024];
-   int i, j, b, chn, iEvt, chn_index, n_boards;
+   int i, j, b, chn, iEvt, n_boards;
+   int chn_index[4];
    double t1, t2, dt;
    char filename[256];
 
@@ -226,7 +228,11 @@ int main(int argc, const char * argv[])
          if (n_boards > 1)
             printf("Found data for board #%d\n", bh.board_serial_number);
          
-         // reach channel data
+         for (chn=0 ; chn<4 ; chn++) {
+           chn_index[chn] = 0;
+         }
+
+         // read channel data
          for (chn=0 ; chn<4 ; chn++) {
             
             // read channel header
@@ -236,22 +242,31 @@ int main(int argc, const char * argv[])
                fseek(f, -4, SEEK_CUR);
                break;
             }
-            chn_index = ch.cn[2] - '0' - 1;
+            chn_index[chn] = ch.cn[2] - '0' - 1;
             fread(&scaler, sizeof(int), 1, f);
-            fread(voltage, sizeof(short), 1024, f);
+            fread(voltage[chn], sizeof(short), 1024, f);
+         }
+
+         // Remove spikes
+         // Wrote own function because trigger cell is not always well written in file
+         DRS4_data::RemoveSpikes(voltage, 20, 2);
+
+         for (chn=0 ; chn<4 ; chn++) {
+
+           int chidx = chn_index[chn];
             
             for (i=0 ; i<1024 ; i++) {
                // Data are encoded in units of 0.1 mV
-               waveform[b][chn_index][i] = (float(short(voltage[i])) / 10.);
+              waveform[b][chidx][i] = (float(voltage[chn][i]) / 10.);
                
                // calculate time for this cell
-               for (j=0,time[b][chn_index][i]=0 ; j<i ; j++)
-                  time[b][chn_index][i] += bin_width[b][chn_index][(j+tch.trigger_cell) % 1024];
+               for (j=0,time[b][(chidx)][i]=0 ; j<i ; j++)
+                  time[b][chidx][i] += bin_width[b][chidx][(j+tch.trigger_cell) % 1024];
             }
 
             float blw = 30.;
-            if (chn_index < 2) blw = 40;
-            DRS4_data::Observables *tmpObs = WaveProcessor::ProcessOnline(time[b][chn_index], waveform[b][chn_index], 1024, 10., blw);
+            if (chidx < 2) blw = 40;
+            DRS4_data::Observables *tmpObs = WaveProcessor::ProcessOnline(time[b][chidx], waveform[b][chidx], 1024, 10., blw);
 
             obs[chn] = *tmpObs;
 
@@ -259,14 +274,14 @@ int main(int argc, const char * argv[])
 
 
             if (iEvt < 20) {
-              TGraph *gr = new TGraph(1024, time[b][chn_index], waveform[b][chn_index]);
+              TGraph *gr = new TGraph(1024, time[b][chidx], waveform[b][chidx]);
 
               if (gr->IsZombie()) {
                 printf("Zombie.\n");
                 exit(0);
               }
-              c.cd(chn_index+1);
-              frame.SetTitle(Form("Channel %d", chn_index+1));
+              c.cd(chn+1);
+              frame.SetTitle(Form("Channel %d, trig. cell %d", chidx+1, tch.trigger_cell));
               frame.DrawCopy();
               gr->Draw("l");
             }
