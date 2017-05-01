@@ -400,10 +400,10 @@ Observables* WaveProcessor::ProcessOnline( Float_t* RawTimeArr,
 	int blEndBin = output->hist->FindBin(baselineWidth);
 	//MeanAndRMS(output->hist, 1, blEndBin, output->Value(baseLine), output->Value(baseLineRMS));
 	output->Value(baseLine) = output->hist->Integral(startBin, blEndBin, "width") / baselineWidth ;
-  output->Value(baseLineRMS) = CalcHistRMS(output->hist, startBin, output->hist->FindBin(baselineWidth));
+  output->Value(baseLineRMS) = CalcHistRMS(output->hist, startBin, blEndBin);
 	output->Value(maxVal) = output->hist->GetBinContent(output->hist->GetMaximumBin()) - output->Value(baseLine);
 
-	output->Value(arrivalTime) = ArrivalTime(output->hist, threshold, output->Value(baseLine), 0, 0.25);
+	output->Value(arrivalTime) = ArrivalTime(output->hist, threshold, output->Value(baseLine), 3, 0.25);
 	int ArrivalTimeBin = output->hist->FindBin(output->Value(arrivalTime));
 
 
