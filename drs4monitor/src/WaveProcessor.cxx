@@ -506,7 +506,7 @@ float WaveProcessor::ArrivalTime(TH1F* hist, float threshold, float baseline,
   float tt1 = 0;
   int nBint1 = 0;
 
-  for (int ibin=1; ibin<maxBin; ibin++) {
+  for (int ibin=3; ibin<=maxBin; ibin++) {
 
     if (hist->GetBinContent(ibin) - baseline > threshold) {
       tt1 = hist->GetBinLowEdge(ibin);
@@ -524,7 +524,7 @@ float WaveProcessor::ArrivalTime(TH1F* hist, float threshold, float baseline,
 
   if (maxVal < 2*threshold) {
 
-    for (int ibin=nBint1; ibin<maxBin; ibin++) {
+    for (int ibin=nBint1; ibin<=maxBin; ibin++) {
 
       if (hist->GetBinContent(ibin) - baseline > 0.9*maxVal) {
         return hist->GetBinLowEdge(ibin) - risetime;
@@ -536,14 +536,14 @@ float WaveProcessor::ArrivalTime(TH1F* hist, float threshold, float baseline,
   /*** Constant fraction for tall signals ***/
 
   float endfit = 0;
-  int endFitBin = 1;
+  int endFitBin = 0;
   float startfit = 0;
-  int startFitBin = 1;
+  int startFitBin = 0;
 
   if (maxVal*fraction < 2*threshold) {
     startfit = tt1;
     startFitBin = nBint1;
-    for (int ibin=nBint1; ibin<maxBin; ibin++) {
+    for (int ibin=nBint1; ibin<=maxBin; ibin++) {
       if (hist->GetBinContent(ibin) - baseline > 2*fraction*maxVal-threshold) {
         endfit = hist->GetBinLowEdge(ibin+1);
         endFitBin = ibin;
@@ -552,14 +552,14 @@ float WaveProcessor::ArrivalTime(TH1F* hist, float threshold, float baseline,
     }
   }
   else { // Threshold is below 1/2 of const fraction
-    for (int ibin=nBint1; ibin<maxBin; ibin++) {
+    for (int ibin=nBint1; ibin<=maxBin; ibin++) {
       if (hist->GetBinContent(ibin) - baseline > maxVal*fraction/2) {
         startfit = hist->GetBinLowEdge(ibin);
         startFitBin = ibin;
         break;
       }
     }
-    for (int ibin=nBint1; ibin<maxBin; ibin++) {
+    for (int ibin=nBint1; ibin<=maxBin; ibin++) {
       if (hist->GetBinContent(ibin) - baseline > maxVal*fraction*3/2) {
         endfit = hist->GetBinLowEdge(ibin+1);
         endFitBin = ibin;
@@ -580,7 +580,20 @@ float WaveProcessor::ArrivalTime(TH1F* hist, float threshold, float baseline,
     float t0 = hist->GetBinLowEdge(startFitBin);
     float dt = hist->GetBinWidth(startFitBin-1);
 
-    return t0 + dt*(fraction*maxVal - v1) / (v0-v1);
+    t0 += dt*(fraction*maxVal - v1) / (v0-v1);
+
+    return t0;
+  }
+
+  if (startFitBin+1 == endFitBin) {
+    float v0 =  hist->GetBinContent(startFitBin);
+    float v1 =  hist->GetBinContent(endFitBin);
+    float t0 = hist->GetBinLowEdge(endFitBin);
+    float dt = hist->GetBinWidth(startFitBin);
+
+    t0 += dt*(fraction*maxVal - v0) / (v1-v0);
+
+    return t0;
   }
 
   float sumv=0, sumt=0;
@@ -606,9 +619,9 @@ float WaveProcessor::ArrivalTime(TH1F* hist, float threshold, float baseline,
 
   float slope = sumWslope / sumW;
   // Correct quantization effects
-  t0 += (fraction*maxVal - v0)/slope;
+  float tCorr = t0 + (fraction*maxVal - v0)/slope;
  //  t0 = v0/maxVal; // Replacing time by actual fraction (for debugging)
 
-  return t0 ; //- (v0 - baseline) / slope;
+  return tCorr ;
 }
 
