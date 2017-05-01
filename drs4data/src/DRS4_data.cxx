@@ -337,29 +337,6 @@ namespace DRS4_data {
         } // Loop over bins
      } // Loop over chans
 
-     /* find spikes at cell #0 and #1023
-     for (unsigned iChan=0 ; iChan<nChan ; iChan++) {
-        float diff = 0;
-        for (unsigned spikeBin=0; spikeBin<spikeWidth; spikeBin++) {
-          diff += static_cast<float>(wf[iChan][spikeBin]) / spikeWidth;
-        }
-        diff -= static_cast<float>(wf[iChan][spikeWidth]);
-        if ( fabs(diff) > threshold) {
-           if (n_sp[iChan] < 10)
-              sp[iChan][n_sp[iChan]++] = -1; // marking bin "before" first spike bin as the location of spike,
-        }
-        diff = 0;
-        for (unsigned spikeBin=kNumberOfBins-spikeWidth; spikeBin<kNumberOfBins; spikeBin++) {
-          diff += wf[iChan][spikeBin];
-        }
-        diff -= 2*wf[iChan][kNumberOfBins-spikeWidth-1];
-
-        if (abs(diff) > threshold) {
-           if (n_sp[iChan] < 10)
-              sp[iChan][n_sp[iChan]++] = kNumberOfBins-spikeWidth-1;
-        }
-     }*/
-
      /* go through all spikes and look for neighbors */
      for (unsigned iChan=0 ; iChan<nChan ; iChan++) {
         for (unsigned ispike =0 ; ispike<n_sp[iChan] ; ispike++) {
@@ -411,6 +388,36 @@ namespace DRS4_data {
         } // Loop over iChan
      } // Loop over ispike
 
+
+     /* find spikes at cell #0 and #1023*/
+     for (unsigned iChan=0 ; iChan<nChan ; iChan++) {
+
+        float diff = 0;
+        for (unsigned spikeBin=0; spikeBin<spikeWidth; spikeBin++) {
+          diff += static_cast<float>(wf[iChan][spikeBin]) / spikeWidth;
+        }
+        diff -= static_cast<float>(wf[iChan][spikeWidth]);
+
+        // Correct immediately. False spikes have low impact here.
+        if ( fabs(diff) > threshold) {
+          for (unsigned spikeBin=0; spikeBin<spikeWidth; spikeBin++) {
+             wf[iChan][spikeBin] = wf[iChan][spikeWidth];
+          }
+        }
+
+        diff = 0;
+        for (unsigned spikeBin=kNumberOfBins-spikeWidth; spikeBin<kNumberOfBins; spikeBin++) {
+          diff += static_cast<float>(wf[iChan][spikeBin]) / spikeWidth;
+        }
+        diff -= static_cast<float>(wf[iChan][kNumberOfBins-spikeWidth-1]);
+
+        // Correct immediately. False spikes have low impact here.
+        if (fabs(diff) > threshold) {
+          for (unsigned spikeBin=kNumberOfBins-spikeWidth; spikeBin<kNumberOfBins; spikeBin++) {
+             wf[iChan][spikeBin] = wf[iChan][kNumberOfBins-spikeWidth-1];
+          }
+        }
+     }
 
   } // RemoveSpikes()
 
