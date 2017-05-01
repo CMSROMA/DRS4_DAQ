@@ -191,14 +191,21 @@ int main(int argc, const char * argv[])
    for (unsigned iCh=0; iCh<nCh; iCh++) {
 
      for (unsigned iObs=0; iObs<DRS4_data::nObservables; iObs++) {
-       const char *varname = Form("%s_%d", obs[iCh].Name(DRS4_data::kObservables(iObs)), iCh);
+       const char *varname = Form("%s_S%d", obs[iCh].Name(DRS4_data::kObservables(iObs)), iCh+1);
        events.Branch(varname, &obs[iCh].Value(DRS4_data::kObservables(iObs)), varname);
      }
    }
 
+   /*** Prepare average waveforms ***/
+
+   TH1F *havg[4];
+   for (int ich=0; ich<4; ich++) {
+     havg[ich] = new TH1F(Form("havg_S%d", ich+1), "Average waveform; t (ns); A (mV)", 1000, 0., 200.);
+   }
+
 
    // loop over all events in the data file
-   for (iEvt=0 ; iEvt<1000; iEvt++) {
+   for (iEvt=0 ; iEvt<100000; iEvt++) {
       // read event header
       i = (int)fread(&eh, sizeof(eh), 1, f);
       if (i < 1)
@@ -256,12 +263,17 @@ int main(int argc, const char * argv[])
            int chidx = chn_index[chn];
             
             for (i=0 ; i<1024 ; i++) {
-               // Data are encoded in units of 0.1 mV
-              waveform[b][chidx][i] = (float(voltage[chn][i]) / 10.);
-               
-               // calculate time for this cell
+
+               float t = 0;
                for (j=0,time[b][(chidx)][i]=0 ; j<i ; j++)
-                  time[b][chidx][i] += bin_width[b][chidx][(j+tch.trigger_cell) % 1024];
+                  t += bin_width[b][chidx][(j+tch.trigger_cell) % 1024];
+
+               time[b][chidx][i] = t;
+
+               // Voltage data is encoded in units of 0.1 mV
+               float v = static_cast<float>(voltage[chn][i]) / 10;
+               waveform[b][chidx][i] = v;
+
             }
 
             float blw = 30.;
@@ -272,17 +284,34 @@ int main(int argc, const char * argv[])
 
             delete tmpObs; tmpObs = NULL;
 
+
          } // Loop over channels
          
 
          events.Fill();
 
+         float tref = (obs[2].Value(DRS4_data::arrivalTime) + obs[3].Value(DRS4_data::arrivalTime)) / 2;
+
+         for (unsigned ichan=0 ; ichan<4 ; ichan++) {
+            // Selection of amplitudes of at least 10 MIP in S1, S2
+            if (ichan==0 && obs[ichan].Value(DRS4_data::maxVal) < 90) continue;
+            if (ichan==1 && obs[ichan].Value(DRS4_data::maxVal) < 80) continue;
+            for (unsigned ibin=0 ; ibin<1024 ; ibin++) {
+              float t = time[b][ichan][ibin] - tref + 30.;
+              float v = waveform[b][ichan][ibin] + obs[ichan].Value(DRS4_data::baseLine);
+              havg[ichan]->Fill(t, v);
+            }
+         }
 
 //         if (iEvt < 20) {
-         if (   obs[0].Value(DRS4_data::baseLineRMS) > 1
+/*         if (   obs[0].Value(DRS4_data::baseLineRMS) > 1
              || obs[1].Value(DRS4_data::baseLineRMS) > 1
              || obs[2].Value(DRS4_data::baseLineRMS) > 1
-             || obs[3].Value(DRS4_data::baseLineRMS) > 1 )
+             || obs[3].Value(DRS4_data::baseLineRMS) > 1 )*/
+         if (   obs[0].Value(DRS4_data::arrivalTime) < 42.
+             || obs[0].Value(DRS4_data::arrivalTime) > 52.
+             || obs[1].Value(DRS4_data::arrivalTime) < 41.
+             || obs[1].Value(DRS4_data::arrivalTime) > 51. )
          {
 
            for (unsigned ichan=0; ichan<4; ichan++) {
