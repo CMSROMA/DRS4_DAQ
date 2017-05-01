@@ -266,7 +266,7 @@ int main(int argc, const char * argv[])
 
             float blw = 30.;
             if (chidx < 2) blw = 40;
-            DRS4_data::Observables *tmpObs = WaveProcessor::ProcessOnline(time[b][chidx], waveform[b][chidx], 1024, 10., blw);
+            DRS4_data::Observables *tmpObs = WaveProcessor::ProcessOnline(time[b][chidx], waveform[b][chidx], 1024, 5., blw);
 
             obs[chn] = *tmpObs;
 
