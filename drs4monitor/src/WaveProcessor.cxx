@@ -390,40 +390,20 @@ Observables* WaveProcessor::ProcessOnline( Float_t* RawTimeArr,
   Observables *output = new Observables;
 	int i;
 
-//	std::cout << "Making RawTempShape." << std::endl;
   output->hist = new TH1F("RawTempShape", "RawTempShape", RawArrLength - 1, RawTimeArr); // nonequidistand histogram
-//  output->hist = new TH1F("RawTempShape", "RawTempShape", RawArrLength-1, RawTimeArr[0], RawTimeArr[RawArrLength-1]);
-/*	std::cout << "time(" << RawTimeArr[0] << ", " << RawTimeArr[1] << ", ... " <<  RawTimeArr[RawArrLength - 2] << ", " << RawTimeArr[RawArrLength - 1] << ")\n";
-	for (int i=0; i<RawArrLength - 1; i++) {
-	  if (RawTimeArr[i+1] <= RawTimeArr[i]) {
-	    std::cout << "time(" << i-1 << ") = " << RawTimeArr[i-1]
-              << "\ntime(" << i   << ") = " << RawTimeArr[i]
-              << "\ntime(" << i+1 << ") = " << RawTimeArr[i+1]
-	            << "\ntime(" << i+2 << ") = " << RawTimeArr[i+2] << "\n";
-	  }
-	}
-	*/
-	//for(i=0; i<RawArrLength; i++) RawTempShape -> SetBinContent((i+RawTrigCell)%RawArrLength, RawVoltArr[i]);
-	for (i=0; i<RawArrLength; i++) output->hist -> Fill(RawTimeArr[i], -RawVoltArr[i]);
+
+	for (i=1; i<=RawArrLength; i++) output->hist -> SetBinContent(i, -RawVoltArr[i]);
 	
 
 	// baseLine must be calculated first.
+	const int startBin = 3; // Avoid spike at the beginning
 	int blEndBin = output->hist->FindBin(baselineWidth);
 	//MeanAndRMS(output->hist, 1, blEndBin, output->Value(baseLine), output->Value(baseLineRMS));
-	output->Value(baseLine) = output->hist->Integral(1, blEndBin, "width") / baselineWidth ;
-  output->Value(baseLineRMS) = CalcHistRMS(output->hist, 1, output->hist->FindBin(baselineWidth));
+	output->Value(baseLine) = output->hist->Integral(startBin, blEndBin, "width") / baselineWidth ;
+  output->Value(baseLineRMS) = CalcHistRMS(output->hist, startBin, output->hist->FindBin(baselineWidth));
 	output->Value(maxVal) = output->hist->GetBinContent(output->hist->GetMaximumBin()) - output->Value(baseLine);
 
-/*
-	int ArrivalTimeBin = output->hist->FindFirstBinAbove(threshold+output->Value(baseLine)); // bin should be transformed to ns according to axis
-	if (ArrivalTimeBin==-1) {
-	  output->Value(arrivalTime) = 0.;
-	}
-	else {
-	  output->Value(arrivalTime) = output->hist->GetXaxis()->GetBinCenter(ArrivalTimeBin);
-	}
-*/
-	output->Value(arrivalTime) = ArrivalTime(output->hist, threshold, output->Value(baseLine), 0);
+	output->Value(arrivalTime) = ArrivalTime(output->hist, threshold, output->Value(baseLine), 0, 0.25);
 	int ArrivalTimeBin = output->hist->FindBin(output->Value(arrivalTime));
 
 
@@ -434,8 +414,8 @@ Observables* WaveProcessor::ProcessOnline( Float_t* RawTimeArr,
 	TH1F* hcumul = static_cast<TH1F*>(tmpHist->GetCumulative());
 	hcumul->Scale(1/tmpHist->Integral()); // normalize cumulative histogram to 1
 	
-	int firstIntegrationBin = max(1, ArrivalTimeBin - 5);
-  int lastIntegrationBin = output->hist->GetXaxis()->GetNbins();
+	int firstIntegrationBin = max(startBin, ArrivalTimeBin - 5);
+  int lastIntegrationBin = output->hist->GetXaxis()->GetNbins()-2; // Avoid spike at the end
   int lastPromptIntegBin = output->hist->FindBin(output->Value(arrivalTime) + 10.);
 
 	output->Value(eTot) = tmpHist->Integral(firstIntegrationBin, lastIntegrationBin, "width");
@@ -512,7 +492,9 @@ float WaveProcessor::MeanAndRMS(const TH1F *hist, int first, int last, float &me
 }
 
 
-float WaveProcessor::ArrivalTime(TH1F* hist, float threshold, float baseline, float risetime){
+float WaveProcessor::ArrivalTime(TH1F* hist, float threshold, float baseline,
+                                  float risetime, float fraction)
+{
 
   if ( !hist ) return -1.;
 
@@ -533,6 +515,9 @@ float WaveProcessor::ArrivalTime(TH1F* hist, float threshold, float baseline, fl
     }
   }
 
+  // Return simple threshold crossing point (uncomment for debugging)
+ // return tt1;
+
   if (0.9*maxVal < threshold) {
     return tt1 - risetime;
   }
@@ -548,39 +533,55 @@ float WaveProcessor::ArrivalTime(TH1F* hist, float threshold, float baseline, fl
 
   } // maxVal < 2*threshold
 
-  /*** Linear fit for tall signals ***/
+  /*** Constant fraction for tall signals ***/
 
   float endfit = 0;
   int endFitBin = 1;
   float startfit = 0;
   int startFitBin = 1;
 
-  for (int ibin=nBint1; ibin<maxBin; ibin++) {
-    if (hist->GetBinContent(ibin) - baseline > maxVal/2) {
-      endfit = hist->GetBinLowEdge(ibin);
-      endFitBin = ibin;
-      break;
-    }
-  }
-
-  if (maxVal < 4*threshold) {
+  if (maxVal*fraction < 2*threshold) {
     startfit = tt1;
     startFitBin = nBint1;
-  }
-  else {
     for (int ibin=nBint1; ibin<maxBin; ibin++) {
-      if (hist->GetBinContent(ibin) - baseline > maxVal/4) {
+      if (hist->GetBinContent(ibin) - baseline > 2*fraction*maxVal-threshold) {
+        endfit = hist->GetBinLowEdge(ibin+1);
+        endFitBin = ibin;
+        break;
+      }
+    }
+  }
+  else { // Threshold is below 1/2 of const fraction
+    for (int ibin=nBint1; ibin<maxBin; ibin++) {
+      if (hist->GetBinContent(ibin) - baseline > maxVal*fraction/2) {
         startfit = hist->GetBinLowEdge(ibin);
         startFitBin = ibin;
         break;
       }
     }
+    for (int ibin=nBint1; ibin<maxBin; ibin++) {
+      if (hist->GetBinContent(ibin) - baseline > maxVal*fraction*3/2) {
+        endfit = hist->GetBinLowEdge(ibin+1);
+        endFitBin = ibin;
+        break;
+      }
+    }
   } // Selection startfit
-
+/**/
 /*
   TFitResultPtr pfit = hist->Fit("pol1", "QNS", "", startfit, endfit);
   return (baseline - pfit->Parameter(0)) / pfit->Parameter(1);
 */
+
+  assert (startFitBin <= endFitBin);
+  if (startFitBin == endFitBin) {
+    float v0 =  hist->GetBinContent(startFitBin);
+    float v1 =  hist->GetBinContent(startFitBin-1);
+    float t0 = hist->GetBinLowEdge(startFitBin);
+    float dt = hist->GetBinWidth(startFitBin-1);
+
+    return t0 + dt*(fraction*maxVal - v1) / (v0-v1);
+  }
 
   float sumv=0, sumt=0;
 
@@ -588,25 +589,25 @@ float WaveProcessor::ArrivalTime(TH1F* hist, float threshold, float baseline, fl
     sumv += hist->GetBinContent(ibin);
     sumt += hist->GetBinLowEdge(ibin);
   }
+  sumt += hist->GetBinLowEdge(endFitBin);
 
-  float t0 = sumt / (endFitBin - startFitBin);
+  float t0 = sumt / (endFitBin - startFitBin + 1);
   float v0 = sumv / (endFitBin - startFitBin);
 
+/**/
   float sumWslope=0, sumW=0;
   for (int ibin=startFitBin; ibin<endFitBin; ibin++) {
     float dv = hist->GetBinContent(ibin) - v0;
-    float dt = hist->GetBinLowEdge(ibin) - t0;
+    float dt = (hist->GetBinLowEdge(ibin) + hist->GetBinLowEdge(ibin+1))/2 - t0;
     float dd = sqrt(dv*dv+dt*dt);
     sumWslope += (dv/dt)*dd;
     sumW += dd;
-/*    float absdt, sgndt;
-    if (dt>0) { absdt =  dt; sgndt =  1.; }
-    else      { absdt = -dt; sgndt = -1.; }
-    sumdv += () / absdt;
-    sumdt += absdt;*/
   }
 
   float slope = sumWslope / sumW;
+  // Correct quantization effects
+  t0 += (fraction*maxVal - v0)/slope;
+ //  t0 = v0/maxVal; // Replacing time by actual fraction (for debugging)
 
   return t0 ; //- (v0 - baseline) / slope;
 }

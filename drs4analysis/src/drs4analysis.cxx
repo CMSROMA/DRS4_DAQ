@@ -249,7 +249,7 @@ int main(int argc, const char * argv[])
 
          // Remove spikes
          // Wrote own function because trigger cell is not always well written in file
-         DRS4_data::RemoveSpikes(voltage, 20, 2);
+         DRS4_data::RemoveSpikes(voltage, 10, 2);
 
          for (chn=0 ; chn<4 ; chn++) {
 
@@ -272,43 +272,47 @@ int main(int argc, const char * argv[])
 
             delete tmpObs; tmpObs = NULL;
 
-
-            if (iEvt < 20) {
-              TGraph *gr = new TGraph(1024, time[b][chidx], waveform[b][chidx]);
-
-              if (gr->IsZombie()) {
-                printf("Zombie.\n");
-                exit(0);
-              }
-              c.cd(chn+1);
-              frame.SetTitle(Form("Channel %d, trig. cell %d", chidx+1, tch.trigger_cell));
-              frame.DrawCopy();
-              gr->Draw("l");
-            }
-
          } // Loop over channels
          
 
          events.Fill();
 
-         if (iEvt < 20) {
-           if (iEvt == 0) {
+
+//         if (iEvt < 20) {
+         if (   obs[0].Value(DRS4_data::baseLineRMS) > 1
+             || obs[1].Value(DRS4_data::baseLineRMS) > 1
+             || obs[2].Value(DRS4_data::baseLineRMS) > 1
+             || obs[3].Value(DRS4_data::baseLineRMS) > 1 )
+         {
+
+           for (unsigned ichan=0; ichan<4; ichan++) {
+             TGraph *gr = new TGraph(1024, time[b][ichan], waveform[b][ichan]);
+
+             if (gr->IsZombie()) {
+               printf("Zombie.\n");
+               exit(0);
+             }
+             c.cd(ichan+1);
+             frame.SetTitle(Form("Channel %d, baseline RMS %.1f", ichan+1, obs[ichan].Value(DRS4_data::baseLineRMS)));
+             frame.DrawCopy();
+             gr->SetLineColor(kRed);
+             gr->SetLineWidth(1);
+             gr->Draw("l");
+           }
+
+           if (firstpage) {
              c.Print(TString(pdfname + "(").Data());
+             firstpage = false;
            }
            else {
-             if (iEvt == 19) {
-               c.Print(TString(pdfname + ")"));
+             c.Print(pdfname.Data());
              }
-             else {
-               c.Print(pdfname.Data());
-             }
-           }
-         } // if (iEvt < 20) (for printing pdf)
+         } // if  printing pdf
 
       } // Loop over the boards
    } // Loop over events
    
-
+   c.Print(TString(pdfname + ")").Data());
    file.Write();
    file.Close();
 
