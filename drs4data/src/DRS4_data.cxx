@@ -304,8 +304,8 @@ namespace DRS4_data {
      memset(spikePos, 0, sizeof(spikePos));
 
      const unsigned nChan = 4;
-     int sp[nChan][10];
-     int rsp[10];
+     int sp[nChan][100];
+     int rsp[100];
      int n_sp[nChan], n_rsp;
      int  nNeighbor, nSymmetric;
 
@@ -360,12 +360,17 @@ namespace DRS4_data {
            if (nNeighbor >= 2) {
               // Check if this spike is already registered as real
               unsigned jspike;
-              for (jspike=0 ; jspike<n_rsp ; jspike++)
-                 if (rsp[jspike] == sp[iChan][ispike])
-                    break;
+              bool alreadyKnown = false;
+              for (jspike=0 ; jspike<n_rsp ; jspike++) {
+                 if (rsp[jspike] == sp[iChan][ispike]) {
+                   break;
+                   alreadyKnown = true;
+                 }
+              }
               // If not registered, register
-              if (n_rsp < 100 && jspike == n_rsp)
+              if (n_rsp < 100 && !alreadyKnown) {
                  rsp[n_rsp++] = sp[iChan][ispike];
+              }
            }
         }
      } // End search for neighbors
