@@ -381,23 +381,31 @@ int MonitorFrame::Run() {
 
       Observables *obs[2] = {NULL, NULL};
 
+      int16_t wf[4][kNumberOfBins];
+
       for(int iboard=0; iboard<headers->ChTimes()->size(); iboard++) {
 
         DRSBoard *b = drs->GetBoard(iboard);
-        for (unsigned char ichan=0 ; ichan<4 ; ichan++) {
 
-          /* decode waveform (Y) arrays in mV */
-          // Do not use DRSBoard::GetTriggerCell()
-          // - it shows the CURRENT trigger cell, not that corresponding to the waveform
-//          std::cout << "Decoding waveform in chan #" << int(ichan)+1 << std::endl;
-          b->GetWave(rawWave->eventWaves.at(iboard)->waveforms, 0, ichan*2, (short*)event->getChData(iboard, ichan)->data,
-              applyResponseCalib, int(rawWave->header.getTriggerCell()), -1, adjustToClockForFile, 0, applyOffsetCalib);
+        /* decode waveform (Y) arrays in mV */
+        for (unsigned char ichan=0 ; ichan<4 ; ichan++) {
+          b->GetWave(rawWave->eventWaves.at(iboard)->waveforms, 0, ichan*2, wf[ichan],
+                     applyResponseCalib, int(rawWave->header.getTriggerCell()), -1,
+                     adjustToClockForFile, 0, applyOffsetCalib);
+        }
+
+        RemoveSpikes(wf, 10, 2);
+
+        for (unsigned char ichan=0 ; ichan<4 ; ichan++) {
 
           float time[kNumberOfBins];
           b->GetTime(0, ichan*2, int(rawWave->header.getTriggerCell()), time, tCalibrated, tRotated);
+
           float amplitude[kNumberOfBins];
-          b->GetWave(rawWave->eventWaves.at(iboard)->waveforms, 0, ichan*2, amplitude, applyResponseCalib,
-              int(rawWave->header.getTriggerCell()), -1, adjustToClock, 0, applyOffsetCalib);
+          for (unsigned ibin=0; ibin<kNumberOfBins; ibin++) {
+            amplitude[ibin] = static_cast<float>(wf[ichan][ibin]);
+            event->getChData(iboard, ichan)->data[ibin] = wf[ichan][ibin] ;
+          }
 
           if (ichan<2 && iboard==0) {
             obs[ichan] = WaveProcessor::ProcessOnline(time, amplitude, kNumberOfBins, 30, 150);

@@ -33,6 +33,7 @@ namespace DRS4_data {
 
   struct RawEvent {
     ~RawEvent();
+    // One Waveforms object per board
     std::vector<Waveforms*> eventWaves;
     EHEADER header;
   };

@@ -298,7 +298,7 @@ namespace DRS4_data {
   }
 
   // Spike removal adapted from class Osci in DRS software
-  void RemoveSpikes(short wf[4][kNumberOfBins], short threshold, short spikeWidth)
+  void RemoveSpikes(int16_t wf[4][kNumberOfBins], short threshold, short spikeWidth)
   {
      int spikePos[kNumberOfBins];
      memset(spikePos, 0, sizeof(spikePos));

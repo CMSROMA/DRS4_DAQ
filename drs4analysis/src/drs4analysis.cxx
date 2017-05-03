@@ -75,7 +75,7 @@ int main(int argc, const char * argv[])
    CHEADER  ch;
    
    unsigned int scaler;
-   short voltage[4][1024];
+   int16_t voltage[4][1024];
    float waveform[16][4][1024], time[16][4][1024];
    float bin_width[16][4][1024];
    int i, j, b, chn, iEvt, n_boards;

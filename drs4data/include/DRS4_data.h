@@ -141,7 +141,7 @@ namespace DRS4_data {
   struct ChannelData {
 
     ChannelData(const unsigned short chnum) :
-      ch(chnum), scaler(0), data(new uint16_t[kNumberOfBins]) {}
+      ch(chnum), scaler(0), data(new int16_t[kNumberOfBins]) {}
     ~ChannelData() {
       delete [] data;
     }
@@ -152,7 +152,7 @@ namespace DRS4_data {
 
     const CHEADER ch;
     uint32_t scaler;
-    uint16_t *data;
+    int16_t *data;
   };
 
 
