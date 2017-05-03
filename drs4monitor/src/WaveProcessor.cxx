@@ -1,5 +1,6 @@
 #include "WaveProcessor.h"
 #include "TFitResult.h"
+#include "TVirtualFFT.h"
 
 using namespace DRS4_data;
 
@@ -616,7 +617,9 @@ TH1* WaveProcessor::FilterFFTofCurrentHist(int ch){ // to finish it if needed
 		case 3: tmp = TempShapeCh3; break;
 		case 4: tmp = TempShapeCh4; break;
 	}
-	sprintf(histfilename, "FFTCh%i_event%i_d%im%iy%i_%i:%i:%i::%i.root", ch,  eventID, dateStmp.day, dateStmp.month, dateStmp.year, dateStmp.hour, dateStmp.minute, dateStmp.second, dateStmp.milisecond);
+	sprintf(histfilename, "FFTCh%i_event%i_d%im%iy%i_%i:%i:%i::%i.root", ch,  eventID,
+	    dateStamp.day, dateStamp.month, dateStamp.year, dateStamp.hour,
+	    dateStamp.minute, dateStamp.second, dateStamp.milisecond);
 	TCanvas *canvFFT = new TCanvas("FFT", histfilename,1);
 	
 	TH1 *histMagnitude =0;
