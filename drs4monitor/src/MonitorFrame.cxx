@@ -389,7 +389,7 @@ int MonitorFrame::Run() {
 
         /* decode waveform (Y) arrays in mV */
         for (unsigned char ichan=0 ; ichan<4 ; ichan++) {
-          b->GetWave(rawWave->eventWaves.at(iboard)->waveforms, 0, ichan*2, wf[ichan],
+          b->GetWave(rawWave->eventWaves.at(iboard)->waveforms, 0, ichan*2, static_cast<short*>(wf[ichan]),
                      applyResponseCalib, int(rawWave->header.getTriggerCell()), -1,
                      adjustToClockForFile, 0, applyOffsetCalib);
         }
