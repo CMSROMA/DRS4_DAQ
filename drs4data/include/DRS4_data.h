@@ -68,7 +68,7 @@ namespace DRS4_data {
     void setTimeStamp();
     void setRange(unsigned short _range) { range = _range; }
 
-    unsigned short getEventNumber()  const { return event_serial_number; }
+    unsigned short getEventNumber()   const { return event_serial_number; }
     unsigned short getYear()          const { return year; }
     unsigned short getMonth()         const { return month; }
     unsigned short getDay()           const { return day; }
@@ -79,6 +79,8 @@ namespace DRS4_data {
     unsigned short getRange()         const { return range; }
     unsigned short getBoardNumber()   const { return bheader.board_serial_number; }
     unsigned short getTriggerCell()   const { return tcheader.trigger_cell; }
+
+    unsigned getMsTotRun() const { return msTotRun; }
 
     void setTriggerCell(unsigned short tc) { tcheader.trigger_cell = tc; }
 
@@ -95,6 +97,7 @@ namespace DRS4_data {
      unsigned short second;
      unsigned short millisecond;
      unsigned short range;
+     unsigned msTotRun;
      BHEADER bheader;
      TCHEADER tcheader;
   };

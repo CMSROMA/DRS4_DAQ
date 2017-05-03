@@ -294,8 +294,8 @@ int main(int argc, const char * argv[])
 
          for (unsigned ichan=0 ; ichan<4 ; ichan++) {
             // Selection of amplitudes of at least 10 MIP in S1, S2
-            if (ichan==0 && obs[ichan].Value(DRS4_data::maxVal) < 90) continue;
-            if (ichan==1 && obs[ichan].Value(DRS4_data::maxVal) < 80) continue;
+            if (ichan==0 && obs[ichan].Value(DRS4_data::maxVal) > 18) continue;
+            if (ichan==1 && obs[ichan].Value(DRS4_data::maxVal) > 16) continue;
             for (unsigned ibin=0 ; ibin<1024 ; ibin++) {
               float t = time[b][ichan][ibin] - tref + 30.;
               float v = waveform[b][ichan][ibin] + obs[ichan].Value(DRS4_data::baseLine);
@@ -304,14 +304,14 @@ int main(int argc, const char * argv[])
          }
 
 //         if (iEvt < 20) {
-/*         if (   obs[0].Value(DRS4_data::baseLineRMS) > 1
+         if (   obs[0].Value(DRS4_data::baseLineRMS) > 1
              || obs[1].Value(DRS4_data::baseLineRMS) > 1
              || obs[2].Value(DRS4_data::baseLineRMS) > 1
-             || obs[3].Value(DRS4_data::baseLineRMS) > 1 )*/
-         if (   obs[0].Value(DRS4_data::arrivalTime) < 42.
+             || obs[3].Value(DRS4_data::baseLineRMS) > 1 )
+      /*   if (   obs[0].Value(DRS4_data::arrivalTime) < 42.
              || obs[0].Value(DRS4_data::arrivalTime) > 52.
              || obs[1].Value(DRS4_data::arrivalTime) < 41.
-             || obs[1].Value(DRS4_data::arrivalTime) > 51. )
+             || obs[1].Value(DRS4_data::arrivalTime) > 51. )*/
          {
 
            for (unsigned ichan=0; ichan<4; ichan++) {

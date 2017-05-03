@@ -555,9 +555,10 @@ void MonitorFrame::DoDraw(bool all) {
 
 
   unsigned nAcq = writer->NEvents();
+  unsigned timeLast = fifo->timeLastEvent();
   nEvtAcqT->SetText(Form("%-10i", nAcq));
   nEvtProT->SetText(Form("%-10i", iEvtProcessed));
-  rate->Push(nAcq, timer.RealTime());
+  rate->Push(nAcq, static_cast<double>(timeLast)/1000);
   rateT->SetText(Form("%5.3g evt/s", rate->Get()));
   timer.Continue();
 

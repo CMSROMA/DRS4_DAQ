@@ -40,6 +40,10 @@ void DRS4_writer::start(const unsigned nEvtMax) {
     return;
   }
 
+  using namespace std::chrono;
+
+  fifo->SetTimeBeginRun(duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count());
+
   std::cout << "DRS4_writer::start(" << nEvtMax << ")." << std::endl;
   f_stop = false;
   internalThread = new std::thread(DRS4_writer::run, this, nEvtMax);

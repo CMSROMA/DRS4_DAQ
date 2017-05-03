@@ -7,6 +7,7 @@
 #include <queue>
 #include <vector>
 #include <iostream>
+#include <chrono>
 #include "DRS4_fifo.h"
 
 namespace DRS4_data {
@@ -29,7 +30,10 @@ namespace DRS4_data {
    * Implementation of class DRS4_fifo
    */
 
-  DRS4_fifo::DRS4_fifo() {
+  DRS4_fifo::DRS4_fifo() :
+    msLastEvent(0),
+    msBeginRun(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count())
+  {
 
   }
 
@@ -44,6 +48,11 @@ namespace DRS4_data {
       delete eventQueue.front();
       eventQueue.pop();
     }
+  }
+
+  unsigned DRS4_fifo::timeLastEvent() const {
+
+    return msLastEvent-msBeginRun;
   }
 
   // returns the pointer. The pointer is popped from the list.
@@ -64,6 +73,7 @@ namespace DRS4_data {
       return -1;
     }
     eventQueue.push(pt);
+    msLastEvent = pt->header.getMsTotRun();
     return 0;
   }
 

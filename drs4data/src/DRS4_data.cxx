@@ -23,7 +23,7 @@ namespace DRS4_data {
     event_header({'E', 'H', 'D', 'R'}),
     event_serial_number(0),
     year(2017), month(0), day(0), hour(0), minute(0), second(0), millisecond(0),
-    range(0), bheader(0), tcheader(-1)
+    range(0), bheader(0), tcheader(-1), msTotRun(0)
   {
 
   }
@@ -35,9 +35,9 @@ namespace DRS4_data {
     year(eh.getYear()), month(eh.getMonth()), day(eh.getDay()),
     hour(eh.getHour()), minute(eh.getMinute()), second(eh.getSecond()),
     millisecond(eh.getMillisecond()), range(eh.getRange()),
+    msTotRun(0),
     bheader(eh.getBoardNumber()), tcheader(eh.getTriggerCell())
   {
-
   }
 
   void EHEADER::setTimeStamp() {
@@ -58,6 +58,7 @@ namespace DRS4_data {
     second = local_tm.tm_sec;
     millisecond = duration_cast<milliseconds>(dtn).count()
                 - duration_cast<seconds>(dtn).count()*1000;
+    msTotRun = duration_cast<milliseconds>(dtn).count();
 
   }
 

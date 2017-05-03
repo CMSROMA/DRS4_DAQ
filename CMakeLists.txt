@@ -4,6 +4,14 @@
 CMAKE_MINIMUM_REQUIRED( VERSION 3.0 FATAL_ERROR )
 ########################################################
 
+
+### SUPPORT C++11 IN ECLIPSE ####################################
+if (${CMAKE_EXTRA_GENERATOR} MATCHES "Eclipse CDT4")
+  set(-DCMAKE_CXX_COMPILER_ARG1 "-std=c++11" CACHE STRING "C++ version for eclipse" FORCE)
+	message( STATUS "Adding c++11 for eclipse")
+endif (${CMAKE_EXTRA_GENERATOR} MATCHES "Eclipse CDT4")
+#################################################################
+
 # project name
 PROJECT( DRS4_DAQ )
 

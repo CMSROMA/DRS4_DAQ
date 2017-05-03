@@ -44,6 +44,8 @@ namespace DRS4_data {
     DRS4_fifo();
     ~DRS4_fifo();
 
+    // Returns the time of the last event in ms since the beginning of the run.
+    unsigned timeLastEvent() const ;
     // Returns the pointer to RawEvent object. The pointer is popped from the queue.
     // The caller is responsible for freeing the memory (deleting the pointer).
     // If the queue is empty, returns null pointer.
@@ -53,12 +55,16 @@ namespace DRS4_data {
     bool isEmpty() const { return eventQueue.empty(); }
     unsigned size() const {return eventQueue.size(); }
 
+    void SetTimeBeginRun(unsigned tf) { msBeginRun = tf; };
+
     void Discard();
 
     static const unsigned maxSize = 10000;
 
   private:
     std::queue<RawEvent*> eventQueue;
+    unsigned msLastEvent;
+    unsigned msBeginRun;
 
   };
 
