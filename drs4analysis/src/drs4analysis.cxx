@@ -322,7 +322,7 @@ int main(int argc, const char * argv[])
                exit(0);
              }
              c.cd(ichan+1);
-             frame.SetTitle(Form("Channel %d, baseline RMS %.1f", ichan+1, obs[ichan].Value(DRS4_data::baseLineRMS)));
+             frame.SetTitle(Form("Ch. %d, baseline RMS %.1f, evt. %d", ichan+1, obs[ichan].Value(DRS4_data::baseLineRMS), iEvt));
              frame.DrawCopy();
              gr->SetLineColor(kRed);
              gr->SetLineWidth(1);

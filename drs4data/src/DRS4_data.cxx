@@ -92,7 +92,7 @@ namespace DRS4_data {
 
     file->write( reinterpret_cast<const char*>(&ch), sizeof(CHEADER) );
     file->write( reinterpret_cast<const char*>(&scaler), sizeof(uint32_t) );
-    file->write( reinterpret_cast<const char*>(data), kNumberOfBins*sizeof(uint16_t) );
+    file->write( reinterpret_cast<const char*>(data), kNumberOfBins*sizeof(int16_t) );
 
     return 0;
   }
@@ -390,7 +390,7 @@ namespace DRS4_data {
      } // Loop over ispike
 
 
-     /* find spikes at cell #0 and #1023*/
+     /* find spikes at cell #0 and #1023 */
      for (unsigned iChan=0 ; iChan<nChan ; iChan++) {
 
         float diff = 0;

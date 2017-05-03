@@ -403,7 +403,7 @@ int MonitorFrame::Run() {
 
           float amplitude[kNumberOfBins];
           for (unsigned ibin=0; ibin<kNumberOfBins; ibin++) {
-            amplitude[ibin] = static_cast<float>(wf[ichan][ibin]);
+            amplitude[ibin] = static_cast<float>(wf[ichan][ibin] / 10);
             event->getChData(iboard, ichan)->data[ibin] = wf[ichan][ibin] ;
           }
 
