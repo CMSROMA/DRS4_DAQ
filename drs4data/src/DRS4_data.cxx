@@ -303,18 +303,9 @@ namespace DRS4_data {
      int spikePos[kNumberOfBins];
      memset(spikePos, 0, sizeof(spikePos));
 
+     unsigned nSpikesTot=0;
+     unsigned nSpikesRemoved=0;
      const unsigned nChan = 4;
-     int sp[nChan][100];
-     int rsp[100];
-     int n_sp[nChan], n_rsp;
-     int  nNeighbor, nSymmetric;
-
-
-     memset(sp, 0, sizeof(sp));
-     memset(n_sp, 0, sizeof(n_sp));
-     memset(rsp, 0, sizeof(rsp));
-     n_rsp = 0;
-
 
      /* find spikes with a high-pass filter */
      for (unsigned iChan=0 ; iChan<nChan ; iChan++) {
@@ -331,69 +322,31 @@ namespace DRS4_data {
                        - static_cast<float>( wf[iChan][ibin] ) ;
 
            if (diff > threshold && diff > slope) {
-             n_sp[iChan]++;
-             sp[iChan][n_sp[iChan]] = ibin;
              spikePos[ibin]++;
+             nSpikesTot++;
            }
         } // Loop over bins
      } // Loop over chans
 
-     /* go through all spikes and look for neighbors */
-     for (unsigned iChan=0 ; iChan<nChan ; iChan++) {
-        for (unsigned ispike =0 ; ispike<n_sp[iChan] ; ispike++) {
 
-           /* check if there is a spike at the same position in other channels */
-           nNeighbor=0;
-           for (unsigned jChan=0 ; jChan<nChan ; jChan++) {
-              if (iChan != jChan) {
-                 for (unsigned lspike=0 ; lspike<n_sp[jChan] ; lspike++)
-                    if ( sp[iChan][ispike] == sp[jChan][lspike] )
-                    {
-                       nNeighbor++;
-                       break;
-                    }
-              }
-           }
+     // Remove spikes if at least two found at the same position in different channels.
+     for (unsigned ibin=0; ibin<kNumberOfBins; ibin++) {
 
+       if (spikePos[ibin] < 2) continue;
+       for (unsigned iChan=0 ; iChan<nChan ; iChan++) {
+         /* remove single spike */
+         short x = wf[iChan][ibin];
+         short y = wf[iChan][(ibin+spikeWidth+1) % kNumberOfBins];
 
-           /* if at least two matching spikes, treat this as a real spike */
-           if (nNeighbor >= 2) {
-              // Check if this spike is already registered as real
-              unsigned jspike;
-              bool alreadyKnown = false;
-              for (jspike=0 ; jspike<n_rsp ; jspike++) {
-                 if (rsp[jspike] == sp[iChan][ispike]) {
-                   break;
-                   alreadyKnown = true;
-                 }
-              }
-              // If not registered, register
-              if (n_rsp < 100 && !alreadyKnown) {
-                 rsp[n_rsp++] = sp[iChan][ispike];
-              }
-           }
-        }
-     } // End search for neighbors
-
-     if (n_rsp > 10) {
-       std::cout << "WARNING: More than 10 spikes in event!\n";
+         double slope = static_cast<double>(y-x)/(spikeWidth+1);
+         for (unsigned spikeBin=1; spikeBin<=spikeWidth; spikeBin++) {
+           wf[iChan][(ibin+spikeBin) % kNumberOfBins] = static_cast<short>(x + spikeBin*slope + .5);
+         }
+       } // Loop over iChan
+       nSpikesRemoved++;
      }
 
-
-     /* Correct spikes */
-     for (unsigned ispike=0 ; ispike<n_rsp ; ispike++) {
-        for (unsigned iChan=0 ; iChan<nChan ; iChan++) {
-          /* remove single spike */
-          short x = wf[iChan][rsp[ispike]];
-          short y = wf[iChan][(rsp[ispike]+spikeWidth+1) % kNumberOfBins];
-
-          double slope = static_cast<double>(y-x)/(spikeWidth+1);
-          for (unsigned spikeBin=1; spikeBin<=spikeWidth; spikeBin++) {
-            wf[iChan][(rsp[ispike]+spikeBin) % kNumberOfBins] = static_cast<short>(x + spikeBin*slope + .5);
-          }
-        } // Loop over iChan
-     } // Loop over ispike
-
+ //    std::cout << "Of " << nSpikesTot << " candidates removed " << nSpikesRemoved << "*4 spikes.\n";
 
      /* find spikes at cell #0 and #1023 */
      for (unsigned iChan=0 ; iChan<nChan ; iChan++) {
