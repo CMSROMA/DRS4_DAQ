@@ -221,7 +221,9 @@ void WaveProcessor::PrintCurrentHist(int ch) const {
 //////////////////////////////// ANALYSIS //////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-Float_t WaveProcessor::GetFWHM(int Ch) {
+Float_t WaveProcessor::GetFWHM(int Ch, Float_t BL) {return WaveProcessor::GetFWHM(Ch, BL, 50.);} // FWHM is at 50 % 
+
+Float_t WaveProcessor::GetFWHM(int Ch, Float_t BL, Float_t height) { // height [%] is the height at which the width is measured FWHM, height = 50 
 
 	TH1F* AnalysisHist;
 	int leftFWHM(0), rightFWHM(0), maxBin(0); 
@@ -234,14 +236,21 @@ Float_t WaveProcessor::GetFWHM(int Ch) {
 		case 3: AnalysisHist = TempShapeCh3; break;
 		case 4: AnalysisHist = TempShapeCh4; break;
 	}
+
 	
 	maxBin = AnalysisHist->GetMaximumBin();
 	
-	while ((leftFWHM!=0)&&(rightFWHM!=0)){
+	//cout<<"maxVal="<<AnalysisHist->GetBinContent(maxBin)<<", BL="<<BL<<endl;
+	
+	height = ((AnalysisHist->GetBinContent(maxBin))-BL)/(100./height); // height in [%]
+	
+	//if ((AnalysisHist->GetBinCenter(maxBin)>70)||(AnalysisHist->GetBinCenter(maxBin)<20)) return 200. ; // this means that something is wrong - probably a spike
+	
+	while ((leftFWHM==0)||(rightFWHM==0)){
 		i++;
 		if ((maxBin-i<0)||(maxBin+i>1024)) break; // couldn't find FWHM, will return 0 
-		if (leftFWHM==0) leftFWHM = ((AnalysisHist->GetBinContent(maxBin-i))<(AnalysisHist->GetBinContent(maxBin)/2.))?(maxBin-i):leftFWHM ;
-		if (rightFWHM==0) rightFWHM= ((AnalysisHist->GetBinContent(maxBin+i))<(AnalysisHist->GetBinContent(maxBin)/2.))?(maxBin+i):rightFWHM ;
+		if (leftFWHM==0) leftFWHM = ((AnalysisHist->GetBinContent(maxBin-i))<(height+BL))?(maxBin-i):leftFWHM ;
+		if (rightFWHM==0) rightFWHM= ((AnalysisHist->GetBinContent(maxBin+i))<(height+BL))?(maxBin+i):rightFWHM ;
 	}	
 	FWHM = AnalysisHist->GetBinCenter(rightFWHM) - AnalysisHist->GetBinCenter(leftFWHM);
 	
@@ -597,3 +606,58 @@ float WaveProcessor::ArrivalTime(TH1F* hist, float threshold, float baseline,
   return t0 ;
 }
 
+TH1* WaveProcessor::FilterFFTofCurrentHist(int ch){ // to finish it if needed
+	TH1F* tmp;
+	char histfilename[60];
+	int n(1024), i ;
+	switch (ch) {
+		case 1: tmp = TempShapeCh1; break;
+		case 2: tmp = TempShapeCh2; break;
+		case 3: tmp = TempShapeCh3; break;
+		case 4: tmp = TempShapeCh4; break;
+	}
+	sprintf(histfilename, "FFTCh%i_event%i_d%im%iy%i_%i:%i:%i::%i.root", ch,  eventID, dateStmp.day, dateStmp.month, dateStmp.year, dateStmp.hour, dateStmp.minute, dateStmp.second, dateStmp.milisecond);
+	TCanvas *canvFFT = new TCanvas("FFT", histfilename,1);
+	
+	TH1 *histMagnitude =0;
+	TVirtualFFT::SetTransform(0);
+	histMagnitude = tmp->FFT(histMagnitude, "MAG");
+
+   histMagnitude->SetTitle("Magnitude of the 1st transform");
+   histMagnitude->Draw();
+	// canvFFT->SaveAs(histfilename); // to check the graph
+	
+	TH1 *histPhase = 0;
+   histPhase = tmp->FFT(histPhase, "PH");
+	
+	TVirtualFFT *fft = TVirtualFFT::GetCurrentTransform();
+	   
+	Double_t *re_full = new Double_t[n];
+   Double_t *im_full = new Double_t[n];
+   fft->GetPointsComplex(re_full,im_full);
+   
+   // Frequency filter (the noise should be checked on the histograms and then apply the filter)
+   
+   // this should be re-made, but if found to be necessary
+   for (i=90;i<130;i++){ // there was a bump at this position, apparently coming from the noise of 10 ns period seen on the waveform
+	   re_full[i]=25;
+	   im_full[i]=25;
+	
+   }
+	
+
+ //inverse transform:
+   TVirtualFFT *fft_inverse = TVirtualFFT::FFT(1, &n, "C2R M K");
+   fft_inverse->SetPointsComplex(re_full,im_full);
+   fft_inverse->Transform();
+   TH1 *hFiltered = 0;
+
+   hFiltered = TH1::TransformHisto(fft_inverse,hFiltered,"Re");
+//   hFiltered->SetTitle("inverse transform filtered");
+//   hFiltered->Draw();
+   
+//	canvFFT->SaveAs("inverse.root");
+
+return hFiltered;
+	
+	}
