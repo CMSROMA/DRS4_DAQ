@@ -394,7 +394,7 @@ int MonitorFrame::Run() {
                      adjustToClockForFile, 0, applyOffsetCalib);
         }
 
-        RemoveSpikes(wf, 10, 2);
+        RemoveSpikes(wf, 20, 2);
 
         for (unsigned char ichan=0 ; ichan<4 ; ichan++) {
 
@@ -408,7 +408,7 @@ int MonitorFrame::Run() {
           }
 
           if (ichan<2 && iboard==0) {
-            obs[ichan] = WaveProcessor::ProcessOnline(time, amplitude, kNumberOfBins, 30, 150);
+            obs[ichan] = WaveProcessor::ProcessOnline(time, amplitude, kNumberOfBins, 5, 38);
             obs[ichan]->hist->SetName(Form("Oscillogram_ch%d", ichan+1));
           }
 

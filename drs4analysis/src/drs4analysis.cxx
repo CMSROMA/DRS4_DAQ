@@ -256,7 +256,7 @@ int main(int argc, const char * argv[])
 
          // Remove spikes
          // Wrote own function because trigger cell is not always well written in file
-         DRS4_data::RemoveSpikes(voltage, 20, 2);
+        // DRS4_data::RemoveSpikes(voltage, 20, 2);
 
          for (chn=0 ; chn<4 ; chn++) {
 
