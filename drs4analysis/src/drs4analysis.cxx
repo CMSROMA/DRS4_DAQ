@@ -21,9 +21,13 @@
 #include "TCanvas.h"
 #include "TStyle.h"
 #include "TString.h"
+#include "Fit/Fitter.h"
+#include "Fit/FitResult.h"
+#include "Math/MinimizerOptions.h"
 
 #include "WaveProcessor.h"
 #include "DRS4_data.h"
+#include "BaseLineModel.h"
 
 
 typedef struct {
@@ -232,7 +236,7 @@ int main(int argc, const char * argv[])
          break;
 
       if (iEvt%100 == 0) {
-        printf("Found event #%d at %d s %d ms\n", eh.event_serial_number, eh.second, eh.millisecond);
+        printf("Found event #%d at %d:%0d:%0d\n", eh.event_serial_number, eh.minute, eh.second, eh.millisecond);
       }
       
       // loop over all boards in data file
@@ -367,8 +371,21 @@ int main(int argc, const char * argv[])
    for (int ich=0; ich<4; ich++) {
      havg[ich]->Scale(1./iEvt);
      if (ich<2) {
-       havg[ich]->Add(hcm[ich], -1.);
-     }
+       double pars[1] = {1.};
+       BaseLineModel bl(pars, havg[ich], hcm[ich]);
+       ROOT::Fit::Fitter fitter;
+       fitter.SetFCN(bl.nPars, bl, pars, bl.DataSize(), true);
+       cout << "Fit function set.\n";
+       bool bresult;
+       bresult = fitter.FitFCN();
+       if(bresult) cout << "\nFit returns true.\n";
+       else cout << "\nFit returns false.\n";
+       ROOT::Fit::FitResult res = fitter.Result();
+       double factor = res.Parameter(0);
+       cout << "Fit result chi2 = " << res.Chi2() << "\n";
+       cout << "Fitted factor = " << factor << "\n";
+       havg[ich]->Add(hcm[ich], -factor);
+     }/**/
    }
    file.Write();
    file.Close();
