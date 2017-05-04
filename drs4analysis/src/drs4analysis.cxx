@@ -81,41 +81,45 @@ int main(int argc, const char * argv[])
    int i, j, b, chn, iEvt, n_boards;
    int chn_index[4];
    double t1, t2, dt;
-   char filename[256];
+   TString infilename, cmfilename;
 
    int ndt;
    double threshold, sumdt, sumdt2;
    
-   if (argc > 1)
-      strcpy(filename, argv[1]);
+   if (argc > 1)  infilename = argv[1];
    else {
-      printf("Usage: drs4analysis <filename>\n");
+      printf("Usage: drs4analysis <filename> <remove spikes (1|0)> [<common mode file name>]\n");
       return 0;
    }
+   bool removeSpikes = false;
+   if (argc > 2) removeSpikes = atoi(argv[2]);
+   if (argc > 3) cmfilename = argv[3];
+   else cmfilename = "BaseLine_CommonMode.root";
    
    // open the binary waveform file
-   FILE *f = fopen(filename, "rb");
+   FILE *f = fopen(infilename.Data(), "rb");
    if (f == NULL) {
-      printf("Cannot find file \'%s\'\n", filename);
+      printf("Cannot find file \'%s\'\n", infilename.Data());
       return 0;
    }
 
    // read file header
    fread(&fh, sizeof(fh), 1, f);
    if (fh.tag[0] != 'D' || fh.tag[1] != 'R' || fh.tag[2] != 'S') {
-      printf("Found invalid file header in file \'%s\', aborting.\n", filename);
+      printf("Found invalid file header in file \'%s\', aborting.\n", infilename.Data());
       return 0;
    }
    
    if (fh.version != '2' && fh.version != '4') {
-      printf("Found invalid file version \'%c\' in file \'%s\', should be \'2\', aborting.\n", fh.version, filename);
+      printf("Found invalid file version \'%c\' in file \'%s\', should be \'2\' or \'4\', aborting.\n",
+          fh.version, infilename.Data());
       return 0;
    }
 
    // read time header
    fread(&th, sizeof(th), 1, f);
    if (memcmp(th.time_header, "TIME", 4) != 0) {
-      printf("Invalid time header in file \'%s\', aborting.\n", filename);
+      printf("Invalid time header in file \'%s\', aborting.\n", infilename.Data());
       return 0;
    }
 
@@ -172,17 +176,41 @@ int main(int argc, const char * argv[])
    frame.SetMaximum(50);
    frame.SetLineColor(kGray);
    frame.SetStats(false);
-   TString pdfname(filename);
+   TString pdfname(infilename);
    if (pdfname.EndsWith(".dat")) pdfname.Resize(pdfname.Sizeof() - 5);
    pdfname += ".pdf";
    bool firstpage = true, lastpage = false;
 
-   /*** Prepare tree ***/
+   /*** Prepare average waveforms ***/
 
-   TString rfname(filename);
+   TFile cmHistos(cmfilename.Data());
+   if (!cmHistos.IsOpen()) {
+     std::cout << "Error: Cannot open file " << cmfilename.Data() << ".\n";
+     return -1;
+   }
+   TH1F *hcm[2] = { NULL, NULL};
+   cmHistos.GetObject("havg_S1", hcm[0]);
+   hcm[0]->SetName("commonModeCH1");
+   cmHistos.GetObject("havg_S2", hcm[1]);
+   hcm[1]->SetName("commonModeCH2");
+   if (!hcm[0] || !hcm[1]) {
+     std::cout << "Error: Cannot read common mode histograms \'havg_S1\' and \'havg_S2\' from file "
+         << cmfilename.Data() << ".\n";
+     return -2;
+   }
+
+
+   /*** Prepare tree and output histos ***/
+
+   TString rfname(infilename);
    if (rfname.EndsWith(".dat")) rfname.Resize(pdfname.Sizeof() - 5);
    rfname += ".root";
    TFile file(rfname, "RECREATE");
+
+   TH1F *havg[4];
+   for (int ich=0; ich<4; ich++) {
+     havg[ich] = new TH1F(Form("havg_S%d", ich+1), "Average waveform; t (ns); A (mV)", 1000, 0., 200.);
+   }
 
    unsigned nCh = 4;
    DRS4_data::Observables obs[nCh];
@@ -195,14 +223,6 @@ int main(int argc, const char * argv[])
        events.Branch(varname, &obs[iCh].Value(DRS4_data::kObservables(iObs)), varname);
      }
    }
-
-   /*** Prepare average waveforms ***/
-
-   TH1F *havg[4];
-   for (int ich=0; ich<4; ich++) {
-     havg[ich] = new TH1F(Form("havg_S%d", ich+1), "Average waveform; t (ns); A (mV)", 1000, 0., 200.);
-   }
-
 
    // loop over all events in the data file
    for (iEvt=0 ; iEvt<100000; iEvt++) {
@@ -221,14 +241,14 @@ int main(int argc, const char * argv[])
          // read board header
          fread(&bh, sizeof(bh), 1, f);
          if (memcmp(bh.bn, "B#", 2) != 0) {
-            printf("Invalid board header in file \'%s\', aborting.\n", filename);
+            printf("Invalid board header in file \'%s\', aborting.\n", infilename.Data());
             return 0;
          }
          
          // read trigger cell
          fread(&tch, sizeof(tch), 1, f);
          if (memcmp(tch.tc, "T#", 2) != 0) {
-            printf("Invalid trigger cell header in file \'%s\', aborting.\n", filename);
+            printf("Invalid trigger cell header in file \'%s\', aborting.\n", infilename.Data());
             return 0;
          }
 
@@ -256,7 +276,7 @@ int main(int argc, const char * argv[])
 
          // Remove spikes
          // Wrote own function because trigger cell is not always well written in file
-        // DRS4_data::RemoveSpikes(voltage, 20, 2);
+         if (removeSpikes) DRS4_data::RemoveSpikes(voltage, 20, 2);
 
          for (chn=0 ; chn<4 ; chn++) {
 
@@ -341,10 +361,19 @@ int main(int argc, const char * argv[])
       } // Loop over the boards
    } // Loop over events
    
+   std::cout << "Counted " << iEvt << " events. Event tree has " << events.GetEntries() << " entries.\n";
+
    c.Print(TString(pdfname + ")").Data());
+   for (int ich=0; ich<4; ich++) {
+     havg[ich]->Scale(1./iEvt);
+     if (ich<2) {
+       havg[ich]->Add(hcm[ich], -1.);
+     }
+   }
    file.Write();
    file.Close();
 
+   cmHistos.Close();
 
    return 1;
 }
