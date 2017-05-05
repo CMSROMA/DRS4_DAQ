@@ -1,6 +1,7 @@
 #include "WaveProcessor.h"
 #include "TFitResult.h"
 #include "TVirtualFFT.h"
+#include "DRS.h"
 
 using namespace DRS4_data;
 
@@ -532,7 +533,7 @@ float WaveProcessor::ArrivalTime(TH1F* hist, float threshold, float baseline,
     return tt1 - risetime;
   }
 
-  if (maxVal*fraction < threshold) {
+  if (maxVal*fraction <= threshold) {
 
     for (int ibin=nBint1; ibin<=maxBin; ibin++) {
 
@@ -545,41 +546,26 @@ float WaveProcessor::ArrivalTime(TH1F* hist, float threshold, float baseline,
 
   /*** Constant fraction for tall signals ***/
 
-  float endfit = 0;
+  int midFitBin = 0;
   int endFitBin = 0;
-  float startfit = 0;
   int startFitBin = 0;
 
-  // Fraction how far to integrate in both directions from the crossing point
-  float fspan = 0.5;
+  // Fraction how far to integrate in both directions from the fraction crossing point
+  float fspanmax = 0.5;
+  float thrDistance = 1. - threshold/fraction/maxVal;
+  assert(thrDistance > 0);
+  float fspan = (fspanmax < thrDistance) ? fspanmax : thrDistance;
+  float timeWing = fspan/0.8 * risetime;
+  int nBinsTimeWing = static_cast<int>(timeWing/200*kNumberOfBins + 0.5);
 
-  if (maxVal*fraction*(1.-fspan) < 2*threshold) {
-    startfit = tt1;
-    startFitBin = nBint1;
-    for (int ibin=nBint1; ibin<=maxBin; ibin++) {
-      if (hist->GetBinContent(ibin) - baseline > 2*fraction*maxVal-threshold) {
-        endfit = hist->GetBinLowEdge(ibin+1);
-        endFitBin = ibin;
-        break;
-      }
+  for (int ibin=nBint1; ibin<=maxBin; ibin++) {
+    if (hist->GetBinContent(ibin) - baseline > fraction*maxVal) {
+      midFitBin = ibin;
+      break;
     }
   }
-  else { // Threshold is below (1.-fspan) of const fraction
-    for (int ibin=nBint1; ibin<=maxBin; ibin++) {
-      if (hist->GetBinContent(ibin) - baseline > maxVal*fraction*(1.-fspan)) {
-        startfit = hist->GetBinLowEdge(ibin);
-        startFitBin = ibin;
-        break;
-      }
-    }
-    for (int ibin=nBint1; ibin<=maxBin; ibin++) {
-      if (hist->GetBinContent(ibin) - baseline > maxVal*fraction*(1.+fspan)) {
-        endfit = hist->GetBinLowEdge(ibin+1);
-        endFitBin = ibin;
-        break;
-      }
-    }
-  } // Selection startfit and endfit
+  startFitBin = midFitBin - nBinsTimeWing;
+  endFitBin = midFitBin + nBinsTimeWing;
 
   assert (startFitBin <= endFitBin);
   if (startFitBin == endFitBin) {
@@ -594,9 +580,18 @@ float WaveProcessor::ArrivalTime(TH1F* hist, float threshold, float baseline,
   float sumt=0, sumw=0;
 
   for (int ibin=startFitBin; ibin<endFitBin; ibin++) {
-//    float w = exp( -fabs(hist->GetBinContent(ibin)/maxVal-fraction)/fspan );
-    // cusp weighting
-    float w = 1. - sqrt(fabs(hist->GetBinContent(ibin)/maxVal-fraction)/fspan);
+    // weighting
+    float w = 0.;
+    float relDistance = fabs(hist->GetBinContent(ibin)/maxVal/fraction-1.)/fspan;
+    if (relDistance < 1.) {
+      float linear = 1. - relDistance;
+    // w = pow(linear, 2); // cusp
+     w = linear; // triangle
+    //  w = sqrt(linear); // bulged triangle
+    //   w = 1.; // Constant
+    //  w = exp(-relDistance*relDistance); // Gaussian (1 sigma)
+    //  w = exp(-relDistance); // Exponential
+    }
     sumt += hist->GetBinLowEdge(ibin) * w;
     sumw += w;
   }
@@ -606,6 +601,7 @@ float WaveProcessor::ArrivalTime(TH1F* hist, float threshold, float baseline,
 
   return t0 ;
 }
+
 
 TH1* WaveProcessor::FilterFFTofCurrentHist(int ch){ // to finish it if needed
 	TH1F* tmp;
