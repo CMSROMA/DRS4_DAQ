@@ -80,9 +80,10 @@ int main(int argc, const char * argv[])
    
    unsigned int scaler;
    int16_t voltage[4][1024];
-   float waveform[16][4][1024], time[16][4][1024];
+   float waveform[16][4][1024];
+   float timebins[16][4][1024];
    float bin_width[16][4][1024];
-   int i, j, b, chn, iEvt, n_boards;
+   int b, n_boards;
    int chn_index[4];
    double t1, t2, dt;
    TString infilename, cmfilename;
@@ -140,20 +141,20 @@ int main(int argc, const char * argv[])
       
       // read time bin widths
       memset(bin_width[b], sizeof(bin_width[0]), 0);
-      for (chn=0 ; chn<5 ; chn++) {
+      for (int ichan=0 ; ichan<5 ; ichan++) {
          fread(&ch, sizeof(ch), 1, f);
          if (ch.c[0] != 'C') {
             // event header found
             fseek(f, -4, SEEK_CUR);
             break;
          }
-         i = ch.cn[2] - '0' - 1;
+         int i = ch.cn[2] - '0' - 1;
          printf("Found timing calibration for channel #%d\n", i+1);
          fread(&bin_width[b][i][0], sizeof(float), 1024, f);
          // fix for 2048 bin mode: double channel
          if (bin_width[b][i][1023] > 10 || bin_width[b][i][1023] < 0.01) {
-            for (j=0 ; j<512 ; j++)
-               bin_width[b][i][j+512] = bin_width[b][i][j];
+            for (unsigned jbin=0 ; jbin<512 ; jbin++)
+               bin_width[b][i][jbin+512] = bin_width[b][i][jbin];
          }
       }
    }
@@ -229,13 +230,16 @@ int main(int argc, const char * argv[])
    }
 
    // loop over all events in the data file
-   for (iEvt=0 ; iEvt<100000; iEvt++) {
+   int iEvt[4] = {0, 0, 0, 0};
+   eh.event_serial_number = 0;
+   while (eh.event_serial_number < 100000) {
+
       // read event header
-      i = (int)fread(&eh, sizeof(eh), 1, f);
-      if (i < 1)
+      int lRead = (int)fread(&eh, sizeof(eh), 1, f);
+      if (lRead < 1)
          break;
 
-      if (iEvt%100 == 0) {
+      if (eh.event_serial_number%100 == 0) {
         printf("Found event #%d at %d:%0d:%0d\n", eh.event_serial_number, eh.minute, eh.second, eh.millisecond);
       }
       
@@ -259,12 +263,12 @@ int main(int argc, const char * argv[])
          if (n_boards > 1)
             printf("Found data for board #%d\n", bh.board_serial_number);
          
-         for (chn=0 ; chn<4 ; chn++) {
-           chn_index[chn] = 0;
+         for (unsigned ichan=0 ; ichan<4 ; ichan++) {
+           chn_index[ichan] = 0;
          }
 
          // read channel data
-         for (chn=0 ; chn<4 ; chn++) {
+         for (unsigned ichan=0 ; ichan<4 ; ichan++) {
             
             // read channel header
             fread(&ch, sizeof(ch), 1, f);
@@ -273,60 +277,46 @@ int main(int argc, const char * argv[])
                fseek(f, -4, SEEK_CUR);
                break;
             }
-            chn_index[chn] = ch.cn[2] - '0' - 1;
+            chn_index[ichan] = ch.cn[2] - '0' - 1;
             fread(&scaler, sizeof(int), 1, f);
-            fread(voltage[chn], sizeof(short), 1024, f);
+            fread(voltage[ichan], sizeof(short), 1024, f);
          }
 
          // Remove spikes
          // Wrote own function because trigger cell is not always well written in file
          if (removeSpikes) DRS4_data::RemoveSpikes(voltage, 20, 2);
 
-         for (chn=0 ; chn<4 ; chn++) {
+         // Process data in all channels
+         for (unsigned ichan=0 ; ichan<4 ; ichan++) {
 
-           int chidx = chn_index[chn];
-            
-            for (i=0 ; i<1024 ; i++) {
+           int chidx = chn_index[ichan];
+            for (int ibin=0 ; ibin<1024 ; ibin++) {
 
                float t = 0;
-               for (j=0,time[b][(chidx)][i]=0 ; j<i ; j++)
-                  t += bin_width[b][chidx][(j+tch.trigger_cell) % 1024];
+               timebins[b][chidx][ibin]=0;
+               for (int jbin =0; jbin<ibin ; jbin++)
+                  t += bin_width[b][chidx][(jbin+tch.trigger_cell) % 1024];
 
-               time[b][chidx][i] = t;
+               timebins[b][chidx][ibin] = t;
 
                // Voltage data is encoded in units of 0.1 mV
-               float v = static_cast<float>(voltage[chn][i]) / 10;
-               waveform[b][chidx][i] = v;
+               float v = static_cast<float>(voltage[ichan][ibin]) / 10;
+               waveform[b][chidx][ibin] = v;
 
             }
 
             float blw = 30.;
             if (chidx < 2) blw = 38;
-            DRS4_data::Observables *tmpObs = WaveProcessor::ProcessOnline(time[b][chidx], waveform[b][chidx], 1024, 2., blw);
-
-            obs[chn] = *tmpObs;
-
+            DRS4_data::Observables *tmpObs = WaveProcessor::ProcessOnline(timebins[b][chidx], waveform[b][chidx], 1024, 2., blw);
+            obs[ichan] = *tmpObs;
             delete tmpObs; tmpObs = NULL;
-
-
          } // Loop over channels
-         
 
+
+         // Fill observables into a tree
          events.Fill();
 
-         float tref = (obs[2].Value(DRS4_data::arrivalTime) + obs[3].Value(DRS4_data::arrivalTime)) / 2;
-
-         for (unsigned ichan=0 ; ichan<4 ; ichan++) {
-            // Selection of amplitudes of at least 10 MIP in S1, S2
-            if (ichan==0 && obs[ichan].Value(DRS4_data::maxVal) > 18) continue;
-            if (ichan==1 && obs[ichan].Value(DRS4_data::maxVal) > 16) continue;
-            for (unsigned ibin=0 ; ibin<1024 ; ibin++) {
-              float t = time[b][ichan][ibin] - tref + 30.;
-              float v = waveform[b][ichan][ibin] + obs[ichan].Value(DRS4_data::baseLine);
-              havg[ichan]->Fill(t, v);
-            }
-         }
-
+         // Plot interesting waveforms
 //         if (iEvt < 20) {
          if (   obs[0].Value(DRS4_data::baseLineRMS) > 1
              || obs[1].Value(DRS4_data::baseLineRMS) > 1
@@ -339,7 +329,7 @@ int main(int argc, const char * argv[])
          {
 
            for (unsigned ichan=0; ichan<4; ichan++) {
-             TGraph *gr = new TGraph(1024, time[b][ichan], waveform[b][ichan]);
+             TGraph *gr = new TGraph(1024, timebins[b][ichan], waveform[b][ichan]);
 
              if (gr->IsZombie()) {
                printf("Zombie.\n");
@@ -362,17 +352,45 @@ int main(int argc, const char * argv[])
              }
          } // if  printing pdf
 
+         /*** Average pulse calculation ***/
+
+         // Reject events that might bias the average pulse calculation
+         bool reject = false;
+         for (unsigned ichan=0; ichan<4; ichan++) {
+           if (   obs[ichan].Value(DRS4_data::baseLineRMS) > 1.
+               || obs[ichan].Value(DRS4_data::maxVal) > 499.9 )
+             reject = true;
+         }
+         if (reject) continue;
+
+         // Reference time for the alignment
+         float tref = (obs[2].Value(DRS4_data::arrivalTime) + obs[3].Value(DRS4_data::arrivalTime)) / 2;
+
+         for (unsigned ichan=0 ; ichan<4 ; ichan++) {
+            // Selection of amplitudes of at least 10 MIP in S1, S2
+            if (ichan==0 && obs[ichan].Value(DRS4_data::maxVal) > 18) continue;
+            if (ichan==1 && obs[ichan].Value(DRS4_data::maxVal) > 16) continue;
+            for (unsigned ibin=0 ; ibin<1024 ; ibin++) {
+              float t = timebins[b][ichan][ibin] - tref + 30.;
+              float v = waveform[b][ichan][ibin] + obs[ichan].Value(DRS4_data::baseLine);
+              havg[ichan]->Fill(t, v);
+            }
+            iEvt[ichan]++;
+         }
+
+
+
       } // Loop over the boards
    } // Loop over events
    
-   std::cout << "Counted " << iEvt << " events. Event tree has " << events.GetEntries() << " entries.\n";
+   std::cout << "Read " << eh.event_serial_number << " events. Event tree has " << events.GetEntries() << " entries.\n";
 
    c.Print(TString(pdfname + ")").Data());
-   for (int ich=0; ich<4; ich++) {
-     havg[ich]->Scale(1./iEvt);
-     if (ich<2) {
-       double pars[1] = {1.};
-       BaseLineModel bl(pars, havg[ich], hcm[ich]);
+   for (unsigned ichan=0; ichan<4; ichan++) {
+     havg[ichan]->Scale(1./iEvt[ichan]);
+     if (ichan<2) {
+  /*     double pars[1] = {1.};
+       BaseLineModel bl(pars, havg[ichan], hcm[ichan]);
        ROOT::Fit::Fitter fitter;
        fitter.SetFCN(bl.nPars, bl, pars, bl.DataSize(), true);
        cout << "Fit function set.\n";
@@ -384,7 +402,9 @@ int main(int argc, const char * argv[])
        double factor = res.Parameter(0);
        cout << "Fit result chi2 = " << res.Chi2() << "\n";
        cout << "Fitted factor = " << factor << "\n";
-       havg[ich]->Add(hcm[ich], -factor);
+       havg[ichan]->Add(hcm[ichan], -factor);*/
+       havg[ichan]->Add(hcm[ichan], -1.);
+
      }/**/
    }
    file.Write();
