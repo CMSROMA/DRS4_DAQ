@@ -18,6 +18,8 @@
 #include "TTimeStamp.h"
 #include "TFile.h"
 #include "TString.h"
+#include "TLegend.h"
+#include "TLegendEntry.h"
 
 
 #include "MonitorFrame.h"
@@ -61,8 +63,8 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
   Observables obs;
   for(int iobs=0; iobs<nObservables; iobs++) {
     kObservables kobs = static_cast<kObservables>(iobs);
-    histo[0][iobs] = new TH1F(Form("h1%d", iobs), Form("%s_{1}; %s_{1} (%s)", obs.Title(kobs), obs.Title(kobs), obs.Unit(kobs)), opt->histoNbins[iobs], opt->histolo[iobs], opt->histohi[iobs]);
-    histo[1][iobs] = new TH1F(Form("h2%d", iobs), Form("%s_{2}; %s_{2} (%s)", obs.Title(kobs), obs.Title(kobs), obs.Unit(kobs)), opt->histoNbins[iobs], opt->histolo[iobs], opt->histohi[iobs]);
+    histo[0][iobs] = new TH1F(Form("h1%d", iobs), Form("%s - S1; %s_{1} (%s)", obs.Title(kobs), obs.Title(kobs), obs.Unit(kobs)), opt->histoNbins[iobs], opt->histolo[iobs], opt->histohi[iobs]);
+    histo[1][iobs] = new TH1F(Form("h2%d", iobs), Form("%s - S2; %s_{2} (%s)", obs.Title(kobs), obs.Title(kobs), obs.Unit(kobs)), opt->histoNbins[iobs], opt->histolo[iobs], opt->histohi[iobs]);
   }
 
   eTot12 = new TH2F("eTot12", Form("eTot2 vs. eTot1; %s_{1} (%s); %s_{2} (%s)", obs.Title(eTot), obs.Unit(eTot), obs.Title(eTot), obs.Unit(eTot)),
@@ -109,6 +111,18 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
   oscFrame->SetStats(false);
   oscFrame->Draw();
   oscFrame=NULL;
+  TLegend * oscLeg = new TLegend(.68, .45, .88, .6);
+  oscLeg->SetBorderSize(0);
+  oscLeg->SetFillStyle(4001);
+  oscLeg->SetTextFont(42);
+  oscLeg->SetTextSize(.05);
+  TLegendEntry *leS1 = oscLeg->AddEntry("S1", " S1", "l");
+  leS1->SetLineColor(kBlue);
+  leS1->SetLineWidth(2);
+  TLegendEntry *leS2 = oscLeg->AddEntry("S2", " S2", "l");
+  leS2->SetLineColor(kRed);
+  leS2->SetLineWidth(2);
+  oscLeg->Draw();
 
 
 // Create a horizontal frame widget with buttons
@@ -295,34 +309,19 @@ void MonitorFrame::Start() {
   time34->Reset();
 
 
-  filename = basename;
-  TTimeStamp ts(std::time(NULL), 0);
-  filename = basename;
-  filename += "_";
-  filename += ts.GetDate(0);
-  filename += "-";
-  filename += ts.GetTime(0);
-  filename += ".dat";
-
 
   timer.Start();
   timeLastSave = 0;
   iEvtProcessed=0;
 
 
-  file = new std::ofstream(filename, std::ios_base::binary & std::ios_base::trunc) ;
-
-  if( file->fail() ) {
-    std::cout << "ERROR: Cannot open file " << filename << " for writing.\n";
+  headers = DRS4_data::DRSHeaders::MakeDRSHeaders(drs);
+  if (StartNewFile() != 0) {
+    writer->stop();
     delete writer;
+    writer = NULL;
     return;
   }
-
-  /*** Write file header and time calibration ***/
-  std::cout << "Writing headers and time calibration to file." << std::endl;
-
-  headers = DRS4_data::DRSHeaders::MakeDRSHeaders(drs);
-  headers->write(file);
 
   rate = new MonitorFrame::RateEstimator();
   rate->Push(0, 1.e-9); // One false time value to avoid division by zero
@@ -336,9 +335,13 @@ void MonitorFrame::Start() {
   Run();
 
   /*** Cleanup after the run finishes ***/
-  file->close();
-  if(file) delete file;
-  file = NULL;
+  if (file) {
+    if (file->is_open()) {
+      file->close();
+    }
+    delete file;
+    file = NULL;
+  }
   f_running = false;
 
   if (rate)      { delete rate;      rate      = NULL; }
@@ -368,6 +371,7 @@ int MonitorFrame::Run() {
   const bool adjustToClockForFile = false;
   const bool applyOffsetCalib = false;   // ?
 
+  unsigned iEvtLocal = 0;
 
   while(!f_stop) {
 
@@ -375,6 +379,10 @@ int MonitorFrame::Run() {
 
     if(rawWave) {
       iEvtSerial = rawWave->header.getEventNumber();
+      iEvtLocal++;
+      if (iEvtLocal%10000 == 0) {
+        StartNewFile();
+      }
  //     std::cout << "Read event #" << iEvtSerial << std::endl;
  //     std::cout << "Trigger cell is " << rawWave->header.getTriggerCell() << std::endl;
       event = new DRS4_data::Event(iEvtSerial, rawWave->header, drs);
@@ -667,4 +675,44 @@ void MonitorFrame::RateEstimator::Push(int count, double time) {
     rateCounts.pop();
     rateTimes.pop();
   }
+}
+
+
+
+int MonitorFrame::StartNewFile() {
+
+  if (file) {
+    if (file->is_open()) {
+      file->close();
+    }
+  }
+  else {
+    file = new std::ofstream();
+  }
+
+
+  filename = basename;
+  TTimeStamp ts(std::time(NULL), 0);
+  filename = basename;
+  filename += "_";
+  filename += ts.GetDate(0);
+  filename += "-";
+  filename += ts.GetTime(0);
+  filename += ".dat";
+
+  file->open(filename, std::ios_base::binary & std::ios_base::trunc) ;
+
+  if( file->fail() ) {
+    std::cout << "ERROR: Cannot open file " << filename << " for writing.\n";
+    return -1;
+  }
+
+  /*** Write file header and time calibration ***/
+  std::cout << "Writing headers and time calibration to file." << std::endl;
+  if (!headers) {
+    headers = DRS4_data::DRSHeaders::MakeDRSHeaders(drs);
+  }
+  headers->write(file);
+
+  return 0;
 }

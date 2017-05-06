@@ -155,6 +155,7 @@ protected:
   int Run();
   void FillHistos(Observables *[2]);
   void AutoSave();
+  int StartNewFile();
 
   void DoDraw(bool all=false);
 
