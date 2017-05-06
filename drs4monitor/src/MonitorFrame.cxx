@@ -406,17 +406,17 @@ int MonitorFrame::Run() {
 
         for (unsigned char ichan=0 ; ichan<4 ; ichan++) {
 
-          float time[kNumberOfBins];
-          b->GetTime(0, ichan*2, int(rawWave->header.getTriggerCell()), time, tCalibrated, tRotated);
+          float timebins[kNumberOfBins];
+          b->GetTime(0, ichan*2, int(rawWave->header.getTriggerCell()), timebins, tCalibrated, tRotated);
 
           float amplitude[kNumberOfBins];
           for (unsigned ibin=0; ibin<kNumberOfBins; ibin++) {
-            amplitude[ibin] = static_cast<float>(wf[ichan][ibin] / 10);
+            amplitude[ibin] = static_cast<float>(wf[ichan][ibin]) / 10;
             event->getChData(iboard, ichan)->data[ibin] = wf[ichan][ibin] ;
           }
 
           if (ichan<2 && iboard==0) {
-            obs[ichan] = WaveProcessor::ProcessOnline(time, amplitude, kNumberOfBins, 5, 38);
+            obs[ichan] = WaveProcessor::ProcessOnline(timebins, amplitude, kNumberOfBins, 5, 38);
             obs[ichan]->hist->SetName(Form("Oscillogram_ch%d", ichan+1));
           }
 

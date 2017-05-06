@@ -240,7 +240,7 @@ int main(int argc, const char * argv[])
          break;
 
       if (eh.event_serial_number%100 == 0) {
-        printf("Found event #%d at %d:%0d:%0d\n", eh.event_serial_number, eh.minute, eh.second, eh.millisecond);
+        printf("Found event #%d at %d:%02d:%03d\n", eh.event_serial_number, eh.minute, eh.second, eh.millisecond);
       }
       
       // loop over all boards in data file
@@ -317,12 +317,12 @@ int main(int argc, const char * argv[])
          events.Fill();
 
          // Plot interesting waveforms
-//         if (iEvt < 20) {
-         if (   obs[0].Value(DRS4_data::baseLineRMS) > 1
+         if (eh.event_serial_number < 20)
+       /*  if (   obs[0].Value(DRS4_data::baseLineRMS) > 1
              || obs[1].Value(DRS4_data::baseLineRMS) > 1
              || obs[2].Value(DRS4_data::baseLineRMS) > 1
              || obs[3].Value(DRS4_data::baseLineRMS) > 1 )
-      /*   if (   obs[0].Value(DRS4_data::arrivalTime) < 42.
+         if (   obs[0].Value(DRS4_data::arrivalTime) < 42.
              || obs[0].Value(DRS4_data::arrivalTime) > 52.
              || obs[1].Value(DRS4_data::arrivalTime) < 41.
              || obs[1].Value(DRS4_data::arrivalTime) > 51. )*/
