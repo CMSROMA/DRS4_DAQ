@@ -514,7 +514,7 @@ float WaveProcessor::ArrivalTime(TH1F* hist, float threshold, float baseline,
   // and maxVal is extracted by solving a system of
   // 3 eqs. with 3 unknowns, with parameters v1-3 and t1-3.
   int maxBin = hist->GetMaximumBin();
-  double t1 = hist->GetBinLowEdge(maxBin-1);
+/*  double t1 = hist->GetBinLowEdge(maxBin-1);
   double t2 = hist->GetBinLowEdge(maxBin);
   double t3 = hist->GetBinLowEdge(maxBin+1);
   double deltat = (t3-t1)/2;
@@ -525,7 +525,9 @@ float WaveProcessor::ArrivalTime(TH1F* hist, float threshold, float baseline,
   //double tmax = t2 + (v3 - v1) / (4*a*deltat);
   double dmax = pow((v1-v3)/deltat, 2) / 2 / a;
   double maxVal = v2 + dmax;
-  double maxSample = v2;
+  double maxSample = v2; */
+  double maxVal = hist->GetBinContent(maxBin) - baseline;
+  double maxSample = hist->GetBinContent(maxBin) - baseline;
 
 
   if (maxVal < threshold) return -1.;
