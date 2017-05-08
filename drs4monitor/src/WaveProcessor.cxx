@@ -509,8 +509,24 @@ float WaveProcessor::ArrivalTime(TH1F* hist, float threshold, float baseline,
 
   if ( !hist ) return -1.;
 
+  // First-order correction of maxVal:
+  // Parabolic shape of the pulse peak is assumed
+  // and maxVal is extracted by solving a system of
+  // 3 eqs. with 3 unknowns, with parameters v1-3 and t1-3.
   int maxBin = hist->GetMaximumBin();
-  float maxVal = hist->GetBinContent(maxBin) - baseline;
+  double t1 = hist->GetBinLowEdge(maxBin-1);
+  double t2 = hist->GetBinLowEdge(maxBin);
+  double t3 = hist->GetBinLowEdge(maxBin+1);
+  double deltat = (t3-t1)/2;
+  double v1 = hist->GetBinContent(maxBin-1) - baseline;
+  double v2 = hist->GetBinContent(maxBin) - baseline;
+  double v3 = hist->GetBinContent(maxBin+1) - baseline;
+  double a = (2*v2 - v3 - v1) / 2 / (deltat*deltat);
+  //double tmax = t2 + (v3 - v1) / (4*a*deltat);
+  double dmax = pow((v1-v3)/deltat, 2) / 2 / a;
+  double maxVal = v2 + dmax;
+  double maxSample = v2;
+
 
   if (maxVal < threshold) return -1.;
 
@@ -529,15 +545,15 @@ float WaveProcessor::ArrivalTime(TH1F* hist, float threshold, float baseline,
   // Return simple threshold crossing point (uncomment for debugging)
  // return tt1;
 
-  if (0.9*maxVal < threshold) {
+  if (0.9*maxSample< threshold) {
     return tt1 - risetime;
   }
 
-  if (maxVal*fraction <= threshold) {
+  if (maxSample*fraction <= threshold) {
 
     for (int ibin=nBint1; ibin<=maxBin; ibin++) {
 
-      if (hist->GetBinContent(ibin) - baseline > 0.9*maxVal) {
+      if (hist->GetBinContent(ibin) - baseline > 0.9*maxSample) {
         return hist->GetBinLowEdge(ibin) - risetime;
       }
     }
