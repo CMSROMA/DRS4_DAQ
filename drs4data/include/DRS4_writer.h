@@ -34,6 +34,11 @@ public:
 
   unsigned NEvents() const { return iEvent; }
 
+  double Temperature() {
+    if (!f_isRunning)  return drs->GetBoard(0)->GetTemperature();
+    else               return temperature;
+  }
+
 private:
 
   DRS4_writer();
@@ -54,6 +59,8 @@ private:
   bool f_stop;
   bool f_isRunning;
   bool f_autoTrigger;
+
+  double temperature;
 
 };
 

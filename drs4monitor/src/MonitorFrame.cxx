@@ -37,7 +37,7 @@ using namespace DRS4_data;
 
 
 MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _drs) :
-  TGMainFrame(p, 200, 200),
+  TGMainFrame(p, 250, 200),
   limits(opt->histolo, opt->histohi),
   options(opt),
   fCanvas01(new TCanvas("DRS4Canvas01", "DRS4 Monitor 01", opt->_w, opt->_h)),
@@ -151,7 +151,7 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
   hardstop->SetFont(ft);
   hframe->AddFrame(hardstop, new TGLayoutHints(kLHintsCenterX,5,5,3,4));
 
-  TGTextButton *save = new TGTextButton(hframe,"&Save");
+/*  TGTextButton *save = new TGTextButton(hframe,"&Save");
   save->Connect("Clicked()","MonitorFrame",this,"Save()");
   save->SetFont(ft);
   hframe->AddFrame(save, new TGLayoutHints(kLHintsCenterX,5,5,3,4));
@@ -160,7 +160,7 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
   exportText->Connect("Clicked()","MonitorFrame",this,"ExportText()");
   exportText->SetFont(ft);
   hframe->AddFrame(exportText, new TGLayoutHints(kLHintsCenterX,5,5,3,4));
-
+*/
   TGTextButton *exit = new TGTextButton(hframe,"&Exit");
   exit->Connect("Clicked()", "MonitorFrame",this,"Exit()");
   exit->SetFont(ft);
@@ -170,7 +170,7 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
 
 
 // Create a horizontal frame widget with text displays
-  TGHorizontalFrame *hframeT = new TGHorizontalFrame(this,200,60);
+  TGHorizontalFrame *hframeT = new TGHorizontalFrame(this,250,60);
 
   TGLabel *nEvtAcqL = new TGLabel(hframeT, "N acq.: ");
   nEvtAcqL->SetTextFont(ft);
@@ -197,6 +197,20 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
   hframeT->AddFrame(rateT, new TGLayoutHints(kLHintsCenterX,1,5,3,4));
 
   AddFrame(hframeT, new TGLayoutHints(kLHintsCenterX | kLHintsTop | kLHintsExpandY,2,2,2,2));
+
+
+  // Create a horizontal frame widget with displays of board status
+  TGHorizontalFrame *hframeB = new TGHorizontalFrame(this,250,60);
+
+  TGLabel *temperatureL = new TGLabel(hframeB, "T = ");
+  temperatureL->SetTextFont(ft);
+  hframeB->AddFrame(temperatureL, new TGLayoutHints(kLHintsCenterX,5,1,3,4));
+
+  temperatureT = new TGLabel(hframeB, "N / A");
+  temperatureT->SetTextFont(ft);
+  hframeB->AddFrame(temperatureT, new TGLayoutHints(kLHintsCenterX,1,5,3,4));
+
+  AddFrame(hframeB, new TGLayoutHints(kLHintsCenterX | kLHintsTop | kLHintsExpandY,2,2,2,2));
 
   std::cout << "Added labels.\n";
 
@@ -297,6 +311,7 @@ void MonitorFrame::Start() {
   if(options->triggerSource == 0) {
     writer->setAutoTrigger();
   }
+  temperatureT->SetText(Form("%.1f\xB0", writer->Temperature()));
 
   /*** Clear histograms ***/
   for(int iobs=0; iobs<nObservables; iobs++) {
@@ -348,9 +363,6 @@ void MonitorFrame::Start() {
   if (headers)   { delete headers;   headers   = NULL; }
   if (writer)    { delete writer;    writer    = NULL; }
 
-/*  for(int iboard=0; iboard<drs->GetNumberOfBoards(); iboard++) {
-    drs->GetBoard(iboard)->ResetMultiBuffer();
-  }*/
 }
 
 
@@ -576,6 +588,7 @@ void MonitorFrame::DoDraw(bool all) {
   nEvtProT->SetText(Form("%-10i", iEvtProcessed));
   rate->Push(nAcq, static_cast<double>(timeLast)/1000);
   rateT->SetText(Form("%5.3g evt/s", rate->Get()));
+  temperatureT->SetText(Form("%.1f\xB0", writer->Temperature()));
   timer.Continue();
 
 }

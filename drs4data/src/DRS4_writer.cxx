@@ -46,6 +46,7 @@ void DRS4_writer::start(const unsigned nEvtMax) {
 
   std::cout << "DRS4_writer::start(" << nEvtMax << ")." << std::endl;
   f_stop = false;
+  temperature = drs->GetBoard(0)->GetTemperature();
   internalThread = new std::thread(DRS4_writer::run, this, nEvtMax);
 }
 
@@ -133,6 +134,9 @@ void DRS4_writer::run( DRS4_writer* w, const unsigned nEvtMax) {
     }
 
     w->event->header.setTimeStamp();
+    if ((w->iEvent)%100 == 0) {
+      w->temperature = mb->GetTemperature();
+    }
 
     /*** Transfer waveforms for all boards ***/
 //    std::cout << "DRS4_writer::run() - Transferring waves." << std::endl;

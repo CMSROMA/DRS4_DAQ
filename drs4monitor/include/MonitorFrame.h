@@ -77,6 +77,7 @@ protected:
   TGLabel *nEvtAcqT;
   TGLabel *nEvtProT;
   TGLabel *rateT;
+  TGLabel *temperatureT;
 
   TCanvas *fCanvas01;
   TRootCanvas *frCanvas01;
