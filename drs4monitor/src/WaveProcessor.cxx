@@ -405,7 +405,6 @@ Observables* WaveProcessor::ProcessOnline( Float_t* RawTimeArr,
 
 	for (i=1; i<=RawArrLength; i++) output->hist -> SetBinContent(i, -RawVoltArr[i]);
 	
-
 	// baseLine must be calculated first.
 	const int startBin = 3; // Avoid spike at the beginning
 	int blEndBin = output->hist->FindBin(baselineWidth);
@@ -422,21 +421,14 @@ Observables* WaveProcessor::ProcessOnline( Float_t* RawTimeArr,
 	TH1F *tmpHist = static_cast<TH1F*>(output->hist->Clone()); // baseLine should be subtracted in order to get time of 90% energy deposition of real signal (baseLine excluded)
 	for (i=0; i<RawArrLength; i++) tmpHist->SetBinContent(i, (tmpHist->GetBinContent(i)-output->Value(baseLine)));
 
-	TH1F* hcumul = static_cast<TH1F*>(tmpHist->GetCumulative());
-	hcumul->Scale(1/tmpHist->Integral()); // normalize cumulative histogram to 1
-	
 	int firstIntegrationBin = max(startBin, ArrivalTimeBin - 5);
-  int lastIntegrationBin = output->hist->GetXaxis()->GetNbins()-2; // Avoid spike at the end
+  int lastIntegrationBin = output->hist->FindBin(180.); // Avoid ripples at the end
   int lastPromptIntegBin = output->hist->FindBin(output->Value(arrivalTime) + 10.);
 
 	output->Value(eTot) = tmpHist->Integral(firstIntegrationBin, lastIntegrationBin, "width");
-//	output->Value(dt90) = output->hist->GetXaxis()->GetBinCenter(hcumul->FindFirstBinAbove(0.9))-output->Value(arrivalTime);
-//	output->Value(dt70) = output->hist->GetXaxis()->GetBinCenter(hcumul->FindFirstBinAbove(0.7))-output->Value(arrivalTime);
-//	output->Value(dt50) = output->hist->GetXaxis()->GetBinCenter(hcumul->FindFirstBinAbove(0.5))-output->Value(arrivalTime);
 	
 	output->Value(ePrompt) = tmpHist->Integral(firstIntegrationBin, lastPromptIntegBin, "width");
 
-	delete hcumul;
 	delete tmpHist;
 
 	return output;

@@ -116,6 +116,10 @@ int main(int argc, const char * argv[])
      char newname[256];
      infile >> newname;
      if (infile.fail()) break;
+     if (TString(newname).Contains("spike", TString::kIgnoreCase)) {
+       removeSpikes = true;
+       continue;
+     }
      filenames.push_back(new TString(newname));
    }
 
@@ -273,19 +277,27 @@ int main(int argc, const char * argv[])
 
                  // Voltage data is encoded in units of 0.1 mV
                  float v = static_cast<float>(voltage[ichan][ibin]) / 10;
+                 // Subtract time-dependent baseline
+                 if (chidx < 2) {
+                   int baselineBin = hcm[chidx]->FindBin(t);
+                   float blbWidth = hcm[chidx]->GetBinWidth(baselineBin);
+                   float thisbWid = bin_width[b][chidx][(ibin+tch.trigger_cell) % 1024];
+                   v -= hcm[chidx]->GetBinContent(baselineBin)*thisbWid/blbWidth;
+                 }
                  waveform[b][chidx][ibin] = v;
 
               }
 
               float blw = 30.;
               if (chidx < 2) blw = 38;
-              DRS4_data::Observables *tmpObs = WaveProcessor::ProcessOnline(timebins[b][chidx], waveform[b][chidx], 1024, 2., blw);
+              DRS4_data::Observables *tmpObs = WaveProcessor::ProcessOnline(timebins[b][chidx],
+                  waveform[b][chidx], 1024, 2., blw);
               obs[ichan] = *tmpObs;
               delete tmpObs; tmpObs = NULL;
            } // Loop over channels
 
 
-           // Fill observables into a tree
+           // Fill observables into the tree
            events.Fill();
 
            // Plot interesting waveforms
@@ -367,7 +379,7 @@ int main(int argc, const char * argv[])
    c.Print(TString(pdfname + ")").Data());
    for (unsigned ichan=0; ichan<4; ichan++) {
      havg[ichan]->Scale(1./iEvt[ichan]);
-     if (ichan<2) {
+    /* if (ichan<2) {
   /*     double pars[1] = {1.};
        BaseLineModel bl(pars, havg[ichan], hcm[ichan]);
        ROOT::Fit::Fitter fitter;
@@ -381,10 +393,10 @@ int main(int argc, const char * argv[])
        double factor = res.Parameter(0);
        cout << "Fit result chi2 = " << res.Chi2() << "\n";
        cout << "Fitted factor = " << factor << "\n";
-       havg[ichan]->Add(hcm[ichan], -factor);*/
+      // havg[ichan]->Add(hcm[ichan], -factor);
        havg[ichan]->Add(hcm[ichan], -1.);
 
-     }/**/
+     }*/
    }
    file.Write();
    file.Close();
