@@ -428,7 +428,7 @@ int MonitorFrame::Run() {
           }
 
           if (ichan<2 && iboard==0) {
-            obs[ichan] = WaveProcessor::ProcessOnline(timebins, amplitude, kNumberOfBins, 5, 28);
+            obs[ichan] = WaveProcessor::ProcessOnline(timebins, amplitude, kNumberOfBins, 4., 28);
             obs[ichan]->hist->SetName(Form("Oscillogram_ch%d", ichan+1));
           }
 

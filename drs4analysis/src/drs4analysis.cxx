@@ -19,6 +19,7 @@
 #include "Fit/Fitter.h"
 #include "Fit/FitResult.h"
 #include "Math/MinimizerOptions.h"
+#include "TRegexp.h"
 
 #include "WaveProcessor.h"
 #include "DRS4_data.h"
@@ -88,8 +89,6 @@ int main(int argc, const char * argv[])
    double t1, t2, dt;
    TString infilename, cmfilename;
 
-   int ndt;
-   double threshold, sumdt, sumdt2;
    
    if (argc > 1)  infilename = argv[1];
    else {
@@ -103,6 +102,12 @@ int main(int argc, const char * argv[])
    if (argc > 3) cmfilename = argv[3];
    else cmfilename = "BaseLine_CommonMode.root";
    
+   double baselineWid = 38;
+   double eMin1 = 0.;
+   double eMax1 = 5.e5;
+   double eMin2 = 0.;
+   double eMax2 = 5.e5;
+
 
    std::vector<TString*>filenames;
    ifstream infile(infilename.Data());
@@ -112,23 +117,53 @@ int main(int argc, const char * argv[])
      return -1;
    }
 
+   TString line;
+   const TRegexp number_patt("[-+ ][0-9]*[.]?[0-9]+");
+
    while (!infile.eof()) {
-     char newname[256];
-     infile >> newname;
-     if (infile.fail()) break;
-     if (TString(newname).Contains("spike", TString::kIgnoreCase)) {
+
+     line.ReadLine(infile);
+     if (line.Sizeof() <= 1) continue;
+
+     if (line.Contains("spike", TString::kIgnoreCase)) {
        removeSpikes = true;
        continue;
      }
-     filenames.push_back(new TString(newname));
+     if (line.Contains("baseline", TString::kIgnoreCase)) {
+       baselineWid = TString(line(number_patt)).Atof();
+       continue;
+     }
+     if (line.Contains("emin1", TString::kIgnoreCase)) {
+       eMin1 = TString(line(number_patt)).Atof();
+       continue;
+     }
+     if (line.Contains("emax1", TString::kIgnoreCase)) {
+       eMax1 = TString(line(number_patt)).Atof();
+       continue;
+     }
+     if (line.Contains("emin2", TString::kIgnoreCase)) {
+       eMin2 = TString(line(number_patt)).Atof();
+       continue;
+     }
+     if (line.Contains("emax2", TString::kIgnoreCase)) {
+       eMax2 = TString(line(number_patt)).Atof();
+       continue;
+     }
+     filenames.push_back(new TString(line));
    }
 
    infile.close();
 
-   // initialize statistics
-   ndt = 0;
-   sumdt = sumdt2 = 0;
-   
+   std::cout << "Processing files:\n";
+   for (int ifile=0; ifile<filenames.size(); ifile++) {
+     std::cout << filenames.at(ifile)->Data() << std::endl;
+   }
+   std::cout << "Spike removal " << (removeSpikes ? "active.\n" : "inactive.\n");
+   std::cout << "Baseline width: " << baselineWid << " ns.\n";
+   std::cout << "E_S1 in (" << eMin1 << ", " << eMax1 << ") mV*ns.\n";
+   std::cout << "E_S2 in (" << eMin2 << ", " << eMax2 << ") mV*ns.\n";
+
+
    /*** Prepare oscillogram plots ***/
    TCanvas c("can", "cancan", 800, 600);
    gStyle->SetPaperSize(18, 12);
@@ -283,15 +318,15 @@ int main(int argc, const char * argv[])
                    float blbWidth = hcm[chidx]->GetBinWidth(baselineBin);
                    float thisbWid = bin_width[b][chidx][(ibin+tch.trigger_cell) % 1024];
                    v -= hcm[chidx]->GetBinContent(baselineBin)*thisbWid/blbWidth;
-                 }
+                 }/**/
                  waveform[b][chidx][ibin] = v;
 
               }
 
               float blw = 30.;
-              if (chidx < 2) blw = 38;
+              if (chidx < 2) blw = baselineWid;
               DRS4_data::Observables *tmpObs = WaveProcessor::ProcessOnline(timebins[b][chidx],
-                  waveform[b][chidx], 1024, 2., blw);
+                  waveform[b][chidx], 1024, 4., blw);
               obs[ichan] = *tmpObs;
               delete tmpObs; tmpObs = NULL;
            } // Loop over channels
@@ -301,8 +336,15 @@ int main(int argc, const char * argv[])
            events.Fill();
 
            // Plot interesting waveforms
+           if (   obs[0].Value(DRS4_data::arrivalTime) > 150.
+               || obs[1].Value(DRS4_data::arrivalTime) > 150. )
+         /*    if ( ( obs[0].Value(DRS4_data::maxVal) > 15.
+                 && obs[0].Value(DRS4_data::arrivalTime) > 100. )
+                 ||
+                  ( obs[1].Value(DRS4_data::maxVal) > 15.
+                 && obs[1].Value(DRS4_data::arrivalTime) > 100. ) )
            if (eh.event_serial_number < 10)
-         /*  if (   obs[0].Value(DRS4_data::baseLineRMS) > 1
+           if (   obs[0].Value(DRS4_data::baseLineRMS) > 1
                || obs[1].Value(DRS4_data::baseLineRMS) > 1
                || obs[2].Value(DRS4_data::baseLineRMS) > 1
                || obs[3].Value(DRS4_data::baseLineRMS) > 1 )
@@ -320,7 +362,8 @@ int main(int argc, const char * argv[])
                  exit(0);
                }
                c.cd(ichan+1);
-               frame.SetTitle(Form("Ch. %d, baseline RMS %.1f, evt. %d", ichan+1, obs[ichan].Value(DRS4_data::baseLineRMS), iEvt));
+               frame.SetTitle(Form("Ch. %d, baseline RMS %.1f, evt. %d",
+                   ichan+1, obs[ichan].Value(DRS4_data::baseLineRMS), eh.event_serial_number));
                frame.DrawCopy();
                gr->SetLineColor(kRed);
                gr->SetLineWidth(1);
@@ -354,15 +397,17 @@ int main(int argc, const char * argv[])
            float tref = (obs[2].Value(DRS4_data::arrivalTime) + obs[3].Value(DRS4_data::arrivalTime)) / 2;
 
            for (unsigned ichan=0 ; ichan<4 ; ichan++) {
-              // Selection of amplitudes of at least 10 MIP in S1, S2
-              if (ichan==0 && obs[ichan].Value(DRS4_data::maxVal) > 18) continue;
-              if (ichan==1 && obs[ichan].Value(DRS4_data::maxVal) > 16) continue;
-              for (unsigned ibin=0 ; ibin<1024 ; ibin++) {
-                float t = timebins[b][ichan][ibin] - tref + 30.;
-                float v = waveform[b][ichan][ibin] + obs[ichan].Value(DRS4_data::baseLine);
-                havg[ichan]->Fill(t, v);
-              }
-              iEvt[ichan]++;
+             // Selection of amplitudes in S1, S2
+             if (ichan==0 && obs[ichan].Value(DRS4_data::eTot) > eMax1) continue;
+             if (ichan==0 && obs[ichan].Value(DRS4_data::eTot) < eMin1) continue;
+             if (ichan==1 && obs[ichan].Value(DRS4_data::eTot) > eMax2) continue;
+             if (ichan==1 && obs[ichan].Value(DRS4_data::eTot) < eMin2) continue;
+             for (unsigned ibin=0 ; ibin<1024 ; ibin++) {
+               float t = timebins[b][ichan][ibin] - tref + 30.;
+               float v = waveform[b][ichan][ibin] + obs[ichan].Value(DRS4_data::baseLine);
+               havg[ichan]->Fill(t, v);
+             }
+             iEvt[ichan]++;
            }
 
 

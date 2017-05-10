@@ -116,8 +116,9 @@ class WaveProcessor {
     
     static float CalcHistRMS(const TH1F*, int, int );
     static float MeanAndRMS(const TH1F*, int first, int last, float &mean, float &rms);
-    static float ArrivalTime(TH1F*, float threshold, float baseline,
-                                    float risetime, float fraction = 0.5);
+    static float ArrivalTime(TH1F*, float &maxVal,
+                             float threshold, float baseline, int firstBin, int lastBin,
+                             float risetime=3., float fraction = 0.25);
     
     float triggerHeight;
     float delay;
