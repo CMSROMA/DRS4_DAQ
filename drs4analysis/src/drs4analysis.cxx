@@ -149,10 +149,11 @@ int main(int argc, const char * argv[])
        eMax2 = TString(line(number_patt)).Atof();
        continue;
      }
-     filenames.push_back(new TString(line));
+     filenames.push_back(new TString(line.Strip(TString::kTrailing, ' ')));
    }
 
    infile.close();
+   infile.clear();
 
    std::cout << "Processing files:\n";
    for (int ifile=0; ifile<filenames.size(); ifile++) {
@@ -233,7 +234,7 @@ int main(int argc, const char * argv[])
 
    for (unsigned ifile=0; ifile<filenames.size(); ifile++) {
 
-      std::cout << "Opening data file " << filenames.at(ifile)->Data() << std::endl;
+      std::cout << "Opening data file \'" << filenames.at(ifile)->Data() << "\'\n";
 
       infile.open(filenames.at(ifile)->Data(), std::ifstream::binary);
       if (infile.fail()) {
@@ -336,19 +337,19 @@ int main(int argc, const char * argv[])
            events.Fill();
 
            // Plot interesting waveforms
-           if (   obs[0].Value(DRS4_data::arrivalTime) > 150.
-               || obs[1].Value(DRS4_data::arrivalTime) > 150. )
-         /*    if ( ( obs[0].Value(DRS4_data::maxVal) > 15.
+         /*   if (   obs[3].Value(DRS4_data::arrivalTime) -
+                obs[2].Value(DRS4_data::arrivalTime) > 0. )
+            if ( ( obs[0].Value(DRS4_data::maxVal) > 15.
                  && obs[0].Value(DRS4_data::arrivalTime) > 100. )
                  ||
                   ( obs[1].Value(DRS4_data::maxVal) > 15.
                  && obs[1].Value(DRS4_data::arrivalTime) > 100. ) )
-           if (eh.event_serial_number < 10)
+           if (eh.event_serial_number < 10)*/
            if (   obs[0].Value(DRS4_data::baseLineRMS) > 1
                || obs[1].Value(DRS4_data::baseLineRMS) > 1
                || obs[2].Value(DRS4_data::baseLineRMS) > 1
                || obs[3].Value(DRS4_data::baseLineRMS) > 1 )
-           if (   obs[0].Value(DRS4_data::arrivalTime) < 42.
+    /*       if (   obs[0].Value(DRS4_data::arrivalTime) < 42.
                || obs[0].Value(DRS4_data::arrivalTime) > 52.
                || obs[1].Value(DRS4_data::arrivalTime) < 41.
                || obs[1].Value(DRS4_data::arrivalTime) > 51. )*/
@@ -424,8 +425,8 @@ int main(int argc, const char * argv[])
    c.Print(TString(pdfname + ")").Data());
    for (unsigned ichan=0; ichan<4; ichan++) {
      havg[ichan]->Scale(1./iEvt[ichan]);
-    /* if (ichan<2) {
-  /*     double pars[1] = {1.};
+     if (ichan<2) {
+       double pars[1] = {0.};
        BaseLineModel bl(pars, havg[ichan], hcm[ichan]);
        ROOT::Fit::Fitter fitter;
        fitter.SetFCN(bl.nPars, bl, pars, bl.DataSize(), true);
@@ -439,9 +440,9 @@ int main(int argc, const char * argv[])
        cout << "Fit result chi2 = " << res.Chi2() << "\n";
        cout << "Fitted factor = " << factor << "\n";
       // havg[ichan]->Add(hcm[ichan], -factor);
-       havg[ichan]->Add(hcm[ichan], -1.);
+      // havg[ichan]->Add(hcm[ichan], -1.);
 
-     }*/
+     }/**/
    }
    file.Write();
    file.Close();

@@ -68,7 +68,7 @@ namespace DRS4_data {
     void setTimeStamp();
     void setRange(unsigned short _range) { range = _range; }
 
-    unsigned short getEventNumber()   const { return event_serial_number; }
+    unsigned int getEventNumber()   const { return event_serial_number; }
     unsigned short getYear()          const { return year; }
     unsigned short getMonth()         const { return month; }
     unsigned short getDay()           const { return day; }

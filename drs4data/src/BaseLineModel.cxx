@@ -73,7 +73,7 @@ double BaseLineModel::operator()(const double * pars) {
     chisq += pow((edata-emodel*factor), 2)/errorsq;
   }
 
-  std::cout << "Factor = " << factor << "; Chi2/ndf = " << chisq/(DataSize()-nPars) << "\n";
+  std::cout << "Factor = " << factor << "; Chi2/ndf = " << chisq/(DataSize()-nPars) << "\r";
   std::cout.flush();
   return chisq;
 }

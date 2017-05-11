@@ -621,12 +621,17 @@ float WaveProcessor::ArrivalTime(TH1F* hist, float &maxVal, float threshold, flo
     sumw += w;
   }
 
-  assert(sumw>0);
- //  t0 = v0/maxVal; // Replacing time by actual fraction (for debugging)
-  float t0 = sumt / sumw;
+  float tarr = 0;
 
-  assert(t0<180);
-  return t0 ;
+    if (sumw==0) {
+      tarr = hist->GetBinLowEdge(midFitBin);
+    }
+    else {
+      // Proper result:
+      tarr = sumt / sumw;
+    } //  t0 = v0/maxVal; // Replacing time by actual fraction (for debugging)
+
+  return tarr ;
 }
 
 
