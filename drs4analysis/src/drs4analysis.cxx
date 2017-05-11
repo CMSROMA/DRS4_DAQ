@@ -298,6 +298,8 @@ int main(int argc, const char * argv[])
            // Wrote own function because trigger cell is not always well written in file
            if (removeSpikes) DRS4_data::RemoveSpikes(voltage, 20, 2);
 
+           int nsaturated[4] = {0,0,0,0};
+
            // Process data in all channels
            for (unsigned ichan=0 ; ichan<4 ; ichan++) {
 
@@ -322,6 +324,10 @@ int main(int argc, const char * argv[])
                  }/**/
                  waveform[b][chidx][ibin] = v;
 
+                 if (abs(voltage[ichan][ibin]) >= 4999) {
+                   nsaturated[ichan]++;
+                 }
+
               }
 
               float blw = 30.;
@@ -332,7 +338,24 @@ int main(int argc, const char * argv[])
               delete tmpObs; tmpObs = NULL;
            } // Loop over channels
 
-
+           // Ignore events with saturated signals in S1 or S2
+           bool saturated = false;
+           for (int ichan=0; ichan<2; ichan++) {
+             if (nsaturated[ichan] > 3) {
+               std::cout << "Saturated signal in channel #" << ichan+1 << " in event #"
+                   <<  eh.event_serial_number << std::endl;
+               saturated = true;
+             }
+           }
+           // Ignore events with *heavily* saturated signals in S3 and S4 (possible card trips)
+           for (int ichan=2; ichan<4; ichan++) {
+             if (nsaturated[ichan] > 100) {
+               std::cout << "Saturated signal in channel #" << ichan+1 << " in event #"
+                   <<  eh.event_serial_number << std::endl;
+               saturated = true;
+             }
+           }
+           if (saturated) continue;
            // Fill observables into the tree
            events.Fill();
 
@@ -385,11 +408,10 @@ int main(int argc, const char * argv[])
 
            /*** Average pulse calculation ***/
 
-           // Reject events that might bias the average pulse calculation
+           // Ignore events that might bias the average pulse calculation
            bool reject = false;
            for (unsigned ichan=0; ichan<4; ichan++) {
-             if (   obs[ichan].Value(DRS4_data::baseLineRMS) > 1.
-                 || obs[ichan].Value(DRS4_data::maxVal) > 499.9 )
+             if ( obs[ichan].Value(DRS4_data::baseLineRMS) > 1. )
                reject = true;
            }
            if (reject) continue;
