@@ -682,9 +682,14 @@ void MonitorFrame::ExportText() {
 void MonitorFrame::RateEstimator::Push(int count, double time) {
   rateCounts.push(count);
   rateTimes.push(time);
-  int nEvtRate = rateCounts.front() - rateCounts.back();
-  evtRate = double(nEvtRate) / (rateTimes.front() - rateTimes.back());
-  if(nEvtRate >= rateCountPeriod) {
+  int nEvtRate = rateCounts.back() - rateCounts.front();
+  if (nEvtRate) {
+    evtRate = double(nEvtRate) / (rateTimes.back() - rateTimes.front());
+  }
+  else {
+    evtRate = 0;
+  }
+  if(nEvtRate >= rateCountPeriod || rateCounts.size() > maxSize) {
     rateCounts.pop();
     rateTimes.pop();
   }

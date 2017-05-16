@@ -366,13 +366,13 @@ int main(int argc, const char * argv[])
                  && obs[0].Value(DRS4_data::arrivalTime) > 100. )
                  ||
                   ( obs[1].Value(DRS4_data::maxVal) > 15.
-                 && obs[1].Value(DRS4_data::arrivalTime) > 100. ) )
-           if (eh.event_serial_number < 10)*/
-           if (   obs[0].Value(DRS4_data::baseLineRMS) > 1
+                 && obs[1].Value(DRS4_data::arrivalTime) > 100. ) )*/
+           if (eh.event_serial_number < 10)
+     /*      if (   obs[0].Value(DRS4_data::baseLineRMS) > 1
                || obs[1].Value(DRS4_data::baseLineRMS) > 1
                || obs[2].Value(DRS4_data::baseLineRMS) > 1
                || obs[3].Value(DRS4_data::baseLineRMS) > 1 )
-    /*       if (   obs[0].Value(DRS4_data::arrivalTime) < 42.
+           if (   obs[0].Value(DRS4_data::arrivalTime) < 42.
                || obs[0].Value(DRS4_data::arrivalTime) > 52.
                || obs[1].Value(DRS4_data::arrivalTime) < 41.
                || obs[1].Value(DRS4_data::arrivalTime) > 51. )*/

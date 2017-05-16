@@ -115,7 +115,8 @@ protected:
     ~RateEstimator() {};
     void Push(int, double);
     double Get() const { return evtRate; };
-    const static int rateCountPeriod = 20; // event count for rate calculation is reset every this many events
+    const static int rateCountPeriod = 20; // Number of events for rate calculation.
+    const static int maxSize= 10; // Max number of event/time pairs for rate calc.
 
   private:
     std::queue<int> rateCounts;
