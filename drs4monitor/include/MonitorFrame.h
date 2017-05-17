@@ -53,6 +53,7 @@ public:
     void Save();        //*SLOT*
     void ExportText(); //*SLOT*
     void Exit();       //*SLOT*
+    void RefreshT();   //*SLOT*
 
     ClassDef(MonitorFrame,0)
 
@@ -160,7 +161,6 @@ protected:
   int StartNewFile();
 
   void DoDraw(bool all=false);
-  void RefreshT();
 
 };
 

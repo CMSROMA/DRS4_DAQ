@@ -210,6 +210,11 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
   temperatureT->SetTextFont(ft);
   hframeB->AddFrame(temperatureT, new TGLayoutHints(kLHintsCenterX,1,5,3,4));
 
+  TGTextButton *refresh = new TGTextButton(hframeB,"&Refresh");
+  refresh->Connect("Clicked()","MonitorFrame",this,"RefreshT()");
+  refresh->SetFont(ft);
+  hframeB->AddFrame(refresh, new TGLayoutHints(kLHintsCenterX,5,5,3,4));
+
   AddFrame(hframeB, new TGLayoutHints(kLHintsCenterX | kLHintsTop | kLHintsExpandY,2,2,2,2));
 
   std::cout << "Added labels.\n";
@@ -484,14 +489,8 @@ int MonitorFrame::Run() {
 
 void MonitorFrame::Stop() {
 
-  if(!f_running) {
-    RefreshT();
-    return;
-  }
-  if (f_stopWhenEmpty) {
-    RefreshT();
-    return;
-  }
+  if(!f_running) return;
+  if (f_stopWhenEmpty) return;
 
   std::cout << "\n\nStopping acquisition.\n";
   writer->stop();
@@ -503,14 +502,8 @@ void MonitorFrame::Stop() {
 
 void MonitorFrame::HardStop() {
 
-  if(!f_running) {
-    RefreshT();
-    return;
-  }
-  if(f_stop) {
-    RefreshT();
-    return;
-  }
+  if(!f_running) return;
+  if(f_stop) return;
 
   std::cout << "\n\nStopping acquisition and monitor.\n";
   writer->stop();
@@ -519,6 +512,21 @@ void MonitorFrame::HardStop() {
   f_stopWhenEmpty = true;
   fifo->Discard();
 }
+
+
+void MonitorFrame::RefreshT() {
+  double t;
+  if (writer) {
+    t = writer->Temperature();
+  }
+  else {
+    t = drs->GetBoard(0)->GetTemperature();
+  }
+  temperatureT->SetText(Form("%.1f\xB0", t));
+}
+
+
+
 
 
 void MonitorFrame::FillHistos(Observables *obs[2])
@@ -603,11 +611,6 @@ void MonitorFrame::DoDraw(bool all) {
   temperatureT->SetText(Form("%.1f\xB0", writer->Temperature()));
   timer.Continue();
 
-}
-
-
-void MonitorFrame::RefreshT() {
-  temperatureT->SetText(Form("%.1f\xB0", drs->GetBoard(0)->GetTemperature()));
 }
 
 
