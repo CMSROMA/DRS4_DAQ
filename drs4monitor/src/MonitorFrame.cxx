@@ -206,7 +206,7 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
   temperatureL->SetTextFont(ft);
   hframeB->AddFrame(temperatureL, new TGLayoutHints(kLHintsCenterX,5,1,3,4));
 
-  temperatureT = new TGLabel(hframeB, "N / A");
+  temperatureT = new TGLabel(hframeB, Form("%.1f\xB0", drs->GetBoard(0)->GetTemperature()));
   temperatureT->SetTextFont(ft);
   hframeB->AddFrame(temperatureT, new TGLayoutHints(kLHintsCenterX,1,5,3,4));
 
@@ -428,7 +428,7 @@ int MonitorFrame::Run() {
           }
 
           if (ichan<2 && iboard==0) {
-            obs[ichan] = WaveProcessor::ProcessOnline(timebins, amplitude, kNumberOfBins, 4., 28);
+            obs[ichan] = WaveProcessor::ProcessOnline(timebins, amplitude, kNumberOfBins, 4., 22);
             obs[ichan]->hist->SetName(Form("Oscillogram_ch%d", ichan+1));
           }
 
@@ -484,8 +484,14 @@ int MonitorFrame::Run() {
 
 void MonitorFrame::Stop() {
 
-  if (!f_running) return;
-  if (f_stopWhenEmpty) return;
+  if(!f_running) {
+    RefreshT();
+    return;
+  }
+  if (f_stopWhenEmpty) {
+    RefreshT();
+    return;
+  }
 
   std::cout << "\n\nStopping acquisition.\n";
   writer->stop();
@@ -497,8 +503,14 @@ void MonitorFrame::Stop() {
 
 void MonitorFrame::HardStop() {
 
-  if(!f_running) return;
-  if(f_stop) return;
+  if(!f_running) {
+    RefreshT();
+    return;
+  }
+  if(f_stop) {
+    RefreshT();
+    return;
+  }
 
   std::cout << "\n\nStopping acquisition and monitor.\n";
   writer->stop();
@@ -592,6 +604,12 @@ void MonitorFrame::DoDraw(bool all) {
   timer.Continue();
 
 }
+
+
+void MonitorFrame::RefreshT() {
+  temperatureT->SetText(Form("%.1f\xB0", drs->GetBoard(0)->GetTemperature()));
+}
+
 
 void MonitorFrame::AutoSave() {
   TTimeStamp ts(std::time(NULL), 0);

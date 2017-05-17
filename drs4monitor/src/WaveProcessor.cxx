@@ -425,7 +425,7 @@ Observables* WaveProcessor::ProcessOnline( Float_t* RawTimeArr,
 	for (i=0; i<RawArrLength; i++) tmpHist->SetBinContent(i, (tmpHist->GetBinContent(i)-output->Value(baseLine)));
 
 	int firstIntegrationBin = max(startBin, ArrivalTimeBin - 5);
-  int lastPromptIntegBin = output->hist->FindBin(output->Value(arrivalTime) + 10.);
+  int lastPromptIntegBin = output->hist->FindBin(output->Value(arrivalTime) + 20.);
 
 	output->Value(eTot) = tmpHist->Integral(firstIntegrationBin, endBin, "width");
 	

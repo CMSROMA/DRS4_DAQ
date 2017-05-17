@@ -160,6 +160,7 @@ protected:
   int StartNewFile();
 
   void DoDraw(bool all=false);
+  void RefreshT();
 
 };
 
