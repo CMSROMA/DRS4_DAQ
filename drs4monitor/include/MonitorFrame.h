@@ -92,6 +92,8 @@ protected:
   const short tRed; // Update frequency reduction factor
   const short tRed2D; // Update frequency reduction factor for 2D histograms
 
+  const float baseLineWidth; // Width of window for the baseline calculation
+
   TString basename, filename;
 
   bool timestamped;

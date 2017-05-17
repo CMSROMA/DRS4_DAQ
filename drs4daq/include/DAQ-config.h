@@ -22,7 +22,10 @@ public:
 	int DumpOptions() const;
 
   /*** Options controlling the run ***/
-	unsigned nEvtMax;
+  unsigned nEvtMax;
+
+  /*** Options for data processing ***/
+  double baseLineWidth;
 
   /*** Options defining the behaviour of the display ***/
 	unsigned int _w, _h;

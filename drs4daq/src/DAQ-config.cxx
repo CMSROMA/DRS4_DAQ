@@ -14,7 +14,7 @@
 using namespace DRS4_data;
 
 config::config(Observables *_obs) :
-  nEvtMax(10),
+  nEvtMax(10), baseLineWidth(20.),
   _w(600), _h(350),
   _tRed(10), _tRed2D(50), _xRed(2), _yRed(2),
   sampleRate(5), inputRange(0), triggerLevel(-0.05),
@@ -33,6 +33,9 @@ int config::DumpOptions() const {
 
   std::cout << "\nDump of the run parameters:\n\n";
   std::cout << "Maximum number of events: " << nEvtMax << std::endl;
+
+  std::cout << "\nData processing parameters:\n\n";
+  std::cout << "Baseline window width: " << baseLineWidth << " ns\n";
 
   std::cout << "\nDump of the display configuration:\n\n";
   std::cout << "Frame dimensions: " << _w << " x " << _h << std::endl;
@@ -97,6 +100,18 @@ int config::ParseOptions(std::ifstream *input)
       TString nevtm = line(number_patt);
       nEvtMax = nevtm.Atoi();
       if (nEvtMax < 0) { nEvtMax = 0; }
+      continue;
+    }
+
+
+    /**** Data processing parameters ****/
+
+    if( line.Contains("baseline", TString::kIgnoreCase)
+        && line.Contains("width", TString::kIgnoreCase) ) {
+      TString blw = line(number_patt);
+      baseLineWidth = blw.Atof();
+      if (baseLineWidth < 0) { baseLineWidth = -baseLineWidth; }
+      if (baseLineWidth > 200) { baseLineWidth = 200.; }
       continue;
     }
 

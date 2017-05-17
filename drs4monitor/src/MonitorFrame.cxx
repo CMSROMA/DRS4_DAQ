@@ -49,6 +49,7 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
   fCanvasOsc(new TCanvas("DRS4CanvasOsc", "DRS4 oscillogram", opt->_w/3, opt->_h/2)),
   frCanvasOsc(new TRootCanvas(fCanvasOsc, "DRS4 oscillogram", 0, 200, opt->_w/3, opt->_h/2)),
   tRed(opt->_tRed), tRed2D(opt->_tRed2D),
+  baseLineWidth(opt->baseLineWidth),
   basename("default"), filename("default"), timestamped(false),
   eTot12(NULL), ePrompt12(NULL), time12(NULL), time34(NULL),
   timeLastSave(0),  rate(NULL),
@@ -433,7 +434,7 @@ int MonitorFrame::Run() {
           }
 
           if (ichan<2 && iboard==0) {
-            obs[ichan] = WaveProcessor::ProcessOnline(timebins, amplitude, kNumberOfBins, 4., 22);
+            obs[ichan] = WaveProcessor::ProcessOnline(timebins, amplitude, kNumberOfBins, 4., baseLineWidth);
             obs[ichan]->hist->SetName(Form("Oscillogram_ch%d", ichan+1));
           }
 
