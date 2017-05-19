@@ -134,7 +134,7 @@ void DRS4_writer::run( DRS4_writer* w, const unsigned nEvtMax) {
     }
 
     w->event->header.setTimeStamp();
-    if ((w->iEvent)%500 == 0) {
+    if ((w->iEvent)%1000 == 0) {
       w->temperature = mb->GetTemperature();
     }
 
@@ -158,7 +158,7 @@ void DRS4_writer::run( DRS4_writer* w, const unsigned nEvtMax) {
     w->fifo->write(w->event); // Adding the pointer to fifo.
     w->event = NULL;          // Guarantee not to accidentally write via w->event
     w->iEvent++;
-    if (w->iEvent%100 == 0) {
+    if (w->iEvent%500 == 0) {
       std::cout << "Acquired event #" << w->iEvent << std::endl;
     }
   } // Loop over events
