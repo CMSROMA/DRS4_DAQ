@@ -134,7 +134,7 @@ void DRS4_writer::run( DRS4_writer* w, const unsigned nEvtMax) {
     }
 
     w->event->header.setTimeStamp();
-    if ((w->iEvent)%100 == 0) {
+    if ((w->iEvent)%500 == 0) {
       w->temperature = mb->GetTemperature();
     }
 
@@ -147,6 +147,7 @@ void DRS4_writer::run( DRS4_writer* w, const unsigned nEvtMax) {
       DRSBoard *b = w->drs->GetBoard(iboard);
       DRS4_data::Waveforms *wf = new DRS4_data::Waveforms;
 
+      // The last two arguments are not actually used, these are values forced by the routine
       b->TransferWaves(wf->waveforms, 0, 8);
       w->event->header.setTriggerCell( b->GetTriggerCell(0) );
 

@@ -118,7 +118,7 @@ protected:
     ~RateEstimator() {};
     void Push(int, double);
     double Get() const { return evtRate; };
-    const static int rateCountPeriod = 20; // Number of events for rate calculation.
+    const static int rateCountPeriod = 50; // Number of events for rate calculation.
     const static int maxSize= 10; // Max number of event/time pairs for rate calc.
 
   private:

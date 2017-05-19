@@ -439,9 +439,10 @@ int MonitorFrame::Run() {
           }
 
         } // Loop over the channels
+      } // Loop over the boards
 
+      iEvtProcessed++;
 
-      }
 
       FillHistos(obs);
       if(obs[0]) {
@@ -454,8 +455,7 @@ int MonitorFrame::Run() {
       event->write(file);
       delete event; event = NULL;
       delete rawWave; rawWave = NULL;
-      iEvtProcessed++;
-      if(iEvtProcessed%100 == 0) {
+      if(iEvtProcessed%500 == 0) {
         std::cout << "Processed event #" << iEvtProcessed << std::endl;
       }
     } // If rawWave (fifo not empty)

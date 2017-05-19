@@ -253,7 +253,7 @@ int main(int argc, const char * argv[])
         if (infile.fail()) break;
 
         if (eh.event_serial_number%100 == 0) {
-          std::cout << Form("Found event #%d at %d:%02d:%03d\n", eh.event_serial_number, eh.minute, eh.second, eh.millisecond);
+          std::cout << Form("Found event #%d at %d:%02d:%02d\n", eh.event_serial_number, eh.hour, eh.minute, eh.second);
         }
 
         // loop over all boards in data file
@@ -421,10 +421,10 @@ int main(int argc, const char * argv[])
 
            for (unsigned ichan=0 ; ichan<4 ; ichan++) {
              // Selection of amplitudes in S1, S2
-             if (ichan==0 && obs[ichan].Value(DRS4_data::eTot) > eMax1) continue;
-             if (ichan==0 && obs[ichan].Value(DRS4_data::eTot) < eMin1) continue;
-             if (ichan==1 && obs[ichan].Value(DRS4_data::eTot) > eMax2) continue;
-             if (ichan==1 && obs[ichan].Value(DRS4_data::eTot) < eMin2) continue;
+             if (ichan==0 && obs[ichan].Value(DRS4_data::ePrompt) > eMax1) continue;
+             if (ichan==0 && obs[ichan].Value(DRS4_data::ePrompt) < eMin1) continue;
+             if (ichan==1 && obs[ichan].Value(DRS4_data::ePrompt) > eMax2) continue;
+             if (ichan==1 && obs[ichan].Value(DRS4_data::ePrompt) < eMin2) continue;
              for (unsigned ibin=0 ; ibin<1024 ; ibin++) {
                float t = timebins[b][ichan][ibin] - tref + 30.;
                float v = waveform[b][ichan][ibin] + obs[ichan].Value(DRS4_data::baseLine);
