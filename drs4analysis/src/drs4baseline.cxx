@@ -1,29 +1,24 @@
 /*
-   Name: drs4analysis.cxx
+   Name: drs4baseline.cxx
 
-   Purpose:  Analyse data saved by drs4daq
+   Purpose: Calculate average waveforms registered in the four channels of drs4daq
+   Store average waveforms as histograms in a root file.
+
 */
 
 #include <cstring>
 #include <math.h>
 #include <fstream>
 #include <vector>
+#include <iostream>
 
-#include "TGraph.h"
 #include "TH1F.h"
 #include "TFile.h"
-#include "TTree.h"
-#include "TCanvas.h"
 #include "TStyle.h"
 #include "TString.h"
-#include "Fit/Fitter.h"
-#include "Fit/FitResult.h"
-#include "Math/MinimizerOptions.h"
-#include "TRegexp.h"
 
 #include "WaveProcessor.h"
 #include "DRS4_data.h"
-#include "BaseLineModel.h"
 
 
 typedef struct {
@@ -89,6 +84,7 @@ int main(int argc, const char * argv[])
    double t1, t2, dt;
    TString infilename, cmfilename;
 
+   const float baselineWid = 22.;
    
    if (argc > 1)  infilename = argv[1];
    else {
@@ -100,25 +96,18 @@ int main(int argc, const char * argv[])
    bool removeSpikes = false;
    if (argc > 2) removeSpikes = atoi(argv[2]);
    if (argc > 3) cmfilename = argv[3];
-   else cmfilename = "BaseLine_timeForm.root";
+   else cmfilename = "BaseLine_CommonMode.root";
    
-   double baselineWid = 38;
-   double eMin1 = 0.;
-   double eMax1 = 5.e5;
-   double eMin2 = 0.;
-   double eMax2 = 5.e5;
-
 
    std::vector<TString*>filenames;
-   ifstream infile(infilename.Data());
+   std::ifstream infile(infilename.Data());
 
    if (infile.fail()) {
-     std:cout << "Cannot open list file " << infilename.Data() << std::endl;
+     std::cout << "Cannot open list file " << infilename.Data() << std::endl;
      return -1;
    }
 
    TString line;
-   const TRegexp number_patt("[-+ ][0-9]*[.]?[0-9]+");
 
    while (!infile.eof()) {
 
@@ -127,26 +116,6 @@ int main(int argc, const char * argv[])
 
      if (line.Contains("spike", TString::kIgnoreCase)) {
        removeSpikes = true;
-       continue;
-     }
-     if (line.Contains("baseline", TString::kIgnoreCase)) {
-       baselineWid = TString(line(number_patt)).Atof();
-       continue;
-     }
-     if (line.Contains("emin1", TString::kIgnoreCase)) {
-       eMin1 = TString(line(number_patt)).Atof();
-       continue;
-     }
-     if (line.Contains("emax1", TString::kIgnoreCase)) {
-       eMax1 = TString(line(number_patt)).Atof();
-       continue;
-     }
-     if (line.Contains("emin2", TString::kIgnoreCase)) {
-       eMin2 = TString(line(number_patt)).Atof();
-       continue;
-     }
-     if (line.Contains("emax2", TString::kIgnoreCase)) {
-       eMax2 = TString(line(number_patt)).Atof();
        continue;
      }
      filenames.push_back(new TString(line.Strip(TString::kTrailing, ' ')));
@@ -160,52 +129,10 @@ int main(int argc, const char * argv[])
      std::cout << filenames.at(ifile)->Data() << std::endl;
    }
    std::cout << "Spike removal " << (removeSpikes ? "active.\n" : "inactive.\n");
-   std::cout << "Baseline width: " << baselineWid << " ns.\n";
-   std::cout << "E_S1 in (" << eMin1 << ", " << eMax1 << ") mV*ns.\n";
-   std::cout << "E_S2 in (" << eMin2 << ", " << eMax2 << ") mV*ns.\n";
 
 
-   /*** Prepare oscillogram plots ***/
-   TCanvas c("can", "cancan", 800, 600);
-   gStyle->SetPaperSize(18, 12);
-   gStyle->SetLabelSize(0.06, "XY");
-   gStyle->SetTitleSize(0.06, "XY");
-   gStyle->SetPadLeftMargin(0.12);
-   gStyle->SetPadBottomMargin(0.12);
-   c.Divide(2, 2, .01, .01);
-   c.GetPad(1)->SetGrid(1, 0);
-   c.GetPad(2)->SetGrid(1, 0);
-   c.GetPad(3)->SetGrid(1, 0);
-   c.GetPad(4)->SetGrid(1, 0);
-   TH1F frame("frame", "frame; t (ns); A (mV)", 10, 0., 200);
-   frame.SetMinimum(-500);
-   frame.SetMaximum(50);
-   frame.SetLineColor(kGray);
-   frame.SetStats(false);
-   TString pdfname(genname);
-   pdfname += ".pdf";
-   bool firstpage = true;
 
-   /*** Prepare average waveforms ***/
-
-   TFile cmHistos(cmfilename.Data());
-   if (!cmHistos.IsOpen()) {
-     std::cout << "Error: Cannot open file " << cmfilename.Data() << ".\n";
-     return -1;
-   }
-   TH1F *hcm[2] = { NULL, NULL};
-   cmHistos.GetObject("havg_S1", hcm[0]);
-   hcm[0]->SetName("commonModeCH1");
-   cmHistos.GetObject("havg_S2", hcm[1]);
-   hcm[1]->SetName("commonModeCH2");
-   if (!hcm[0] || !hcm[1]) {
-     std::cout << "Error: Cannot read common mode histograms \'havg_S1\' and \'havg_S2\' from file "
-         << cmfilename.Data() << ".\n";
-     return -2;
-   }
-
-
-   /*** Prepare tree and output histos ***/
+   /*** Prepare histos ***/
 
    TString rfname(genname);
    rfname += ".root";
@@ -218,15 +145,6 @@ int main(int argc, const char * argv[])
 
    unsigned nCh = 4;
    DRS4_data::Observables obs[nCh];
-   TTree events("events", "events");
-
-   for (unsigned iCh=0; iCh<nCh; iCh++) {
-
-     for (unsigned iObs=0; iObs<DRS4_data::nObservables; iObs++) {
-       const char *varname = Form("%s_S%d", obs[iCh].Name(DRS4_data::kObservables(iObs)), iCh+1);
-       events.Branch(varname, &obs[iCh].Value(DRS4_data::kObservables(iObs)), varname);
-     }
-   }
 
    // loop over all events in the data file
    int iEvt[4] = {0, 0, 0, 0};
@@ -316,12 +234,6 @@ int main(int argc, const char * argv[])
                  // Voltage data is encoded in units of 0.1 mV
                  float v = static_cast<float>(voltage[ichan][ibin]) / 10;
                  // Subtract time-dependent baseline
-                 if (chidx < 2) {
-                   int baselineBin = hcm[chidx]->FindBin(t);
-                   float blbWidth = hcm[chidx]->GetBinWidth(baselineBin);
-                   float thisbWid = bin_width[b][chidx][(ibin+tch.trigger_cell) % 1024];
-                   v -= hcm[chidx]->GetBinContent(baselineBin)*thisbWid/blbWidth;
-                 }/**/
                  waveform[b][chidx][ibin] = v;
 
                  if (abs(voltage[ichan][ibin]) >= 4999) {
@@ -330,10 +242,8 @@ int main(int argc, const char * argv[])
 
               }
 
-              float blw = 30.;
-              if (chidx < 2) blw = baselineWid;
               DRS4_data::Observables *tmpObs = WaveProcessor::ProcessOnline(timebins[b][chidx],
-                  waveform[b][chidx], 1024, 4., blw);
+                  waveform[b][chidx], 1024, 4., baselineWid);
               obs[ichan] = *tmpObs;
               delete tmpObs; tmpObs = NULL;
            } // Loop over channels
@@ -356,55 +266,7 @@ int main(int argc, const char * argv[])
              }
            }
            if (saturated) continue;
-           // Fill observables into the tree
-           events.Fill();
 
-           // Plot interesting waveforms
-         /*   if (   obs[3].Value(DRS4_data::arrivalTime) -
-                obs[2].Value(DRS4_data::arrivalTime) > 0. )
-            if ( ( obs[0].Value(DRS4_data::maxVal) > 15.
-                 && obs[0].Value(DRS4_data::arrivalTime) > 100. )
-                 ||
-                  ( obs[1].Value(DRS4_data::maxVal) > 15.
-                 && obs[1].Value(DRS4_data::arrivalTime) > 100. ) )*/
-           if (eh.event_serial_number < 10)
-     /*      if (   obs[0].Value(DRS4_data::baseLineRMS) > 1
-               || obs[1].Value(DRS4_data::baseLineRMS) > 1
-               || obs[2].Value(DRS4_data::baseLineRMS) > 1
-               || obs[3].Value(DRS4_data::baseLineRMS) > 1 )
-           if (   obs[0].Value(DRS4_data::arrivalTime) < 42.
-               || obs[0].Value(DRS4_data::arrivalTime) > 52.
-               || obs[1].Value(DRS4_data::arrivalTime) < 41.
-               || obs[1].Value(DRS4_data::arrivalTime) > 51. )*/
-           {
-
-             for (unsigned ichan=0; ichan<4; ichan++) {
-               TGraph *gr = new TGraph(1024, timebins[b][ichan], waveform[b][ichan]);
-
-               if (gr->IsZombie()) {
-                 printf("Zombie.\n");
-                 exit(0);
-               }
-               c.cd(ichan+1);
-               frame.SetTitle(Form("Ch. %d, baseline RMS %.1f, evt. %d",
-                   ichan+1, obs[ichan].Value(DRS4_data::baseLineRMS), eh.event_serial_number));
-               frame.DrawCopy();
-               gr->SetLineColor(kRed);
-               gr->SetLineWidth(1);
-               gr->Draw("l");
-             }
-
-             if (firstpage) {
-               c.Print(TString(pdfname + "(").Data());
-               firstpage = false;
-             }
-             else {
-               c.Print(pdfname.Data());
-             }
-             for (int ipad=1; ipad<=4; ipad++) {
-               c.GetPad(ipad)->Clear();
-             }
-           } // if  printing pdf
 
            /*** Average pulse calculation ***/
 
@@ -417,16 +279,11 @@ int main(int argc, const char * argv[])
            if (reject) continue;
 
            // Reference time for the alignment
-           float tref = (obs[2].Value(DRS4_data::arrivalTime) + obs[3].Value(DRS4_data::arrivalTime)) / 2;
+ //          float tref = (obs[2].Value(DRS4_data::arrivalTime) + obs[3].Value(DRS4_data::arrivalTime)) / 2;
 
            for (unsigned ichan=0 ; ichan<4 ; ichan++) {
-             // Selection of amplitudes in S1, S2
-             if (ichan==0 && obs[ichan].Value(DRS4_data::ePrompt) > eMax1) continue;
-             if (ichan==0 && obs[ichan].Value(DRS4_data::ePrompt) < eMin1) continue;
-             if (ichan==1 && obs[ichan].Value(DRS4_data::ePrompt) > eMax2) continue;
-             if (ichan==1 && obs[ichan].Value(DRS4_data::ePrompt) < eMin2) continue;
              for (unsigned ibin=0 ; ibin<1024 ; ibin++) {
-               float t = timebins[b][ichan][ibin] - tref + 30.;
+               float t = timebins[b][ichan][ibin];// - tref + baselineWid;
                float v = waveform[b][ichan][ibin] + obs[ichan].Value(DRS4_data::baseLine);
                havg[ichan]->Fill(t, v);
              }
@@ -440,36 +297,14 @@ int main(int argc, const char * argv[])
 
       infile.close();
       infile.clear();
-      std::cout << "Read " << eh.event_serial_number << " events from this file. Event tree has a total of " << events.GetEntries() << " entries.\n";
    } // Loop over files
    
 
-   c.Print(TString(pdfname + ")").Data());
    for (unsigned ichan=0; ichan<4; ichan++) {
      havg[ichan]->Scale(1./iEvt[ichan]);
-     if (ichan<2) {
-       double pars[1] = {0.};
-       BaseLineModel bl(pars, havg[ichan], hcm[ichan]);
-       ROOT::Fit::Fitter fitter;
-       fitter.SetFCN(bl.nPars, bl, pars, bl.DataSize(), true);
-       cout << "Fit function set.\n";
-       bool bresult;
-       bresult = fitter.FitFCN();
-       if(bresult) cout << "\nFit returns true.\n";
-       else cout << "\nFit returns false.\n";
-       ROOT::Fit::FitResult res = fitter.Result();
-       double factor = res.Parameter(0);
-       cout << "Fit result chi2 = " << res.Chi2() << "\n";
-       cout << "Fitted factor = " << factor << "\n";
-      // havg[ichan]->Add(hcm[ichan], -factor);
-      // havg[ichan]->Add(hcm[ichan], -1.);
-
-     }/**/
    }
    file.Write();
    file.Close();
-
-   cmHistos.Close();
 
    // cleanup filenames vector
    for (int i=0; i<filenames.size(); i++) {

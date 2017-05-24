@@ -1,17 +1,17 @@
 /*
  * BaseLineModel.h
  *
- * Class BaseLineModel is a chi2 functor useful for fitting
- * the radial shower profile with parametrisation functions.
+ * Class BaseLineModel is a chi2 functor for fitting
+ * the baseline residual difference.
  *
- *  Created on: Nov 25, 2016
- *      Author: strahinja
+ *  Created on: May 2017
+ *      Author: S. Lukic
  */
 
 #ifndef BASELINEMODEL_H_
 #define BASELINEMODEL_H_
 
-#include "TH2Poly.h"
+#include "TH1F.h"
 #include "TRandom3.h"
 #include "TF1.h"
 #include "TTree.h"
