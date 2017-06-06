@@ -228,7 +228,6 @@ int main(int argc, const char * argv[])
      }
    }
 
-   // loop over all events in the data file
    int iEvt[4] = {0, 0, 0, 0};
 
 

@@ -598,7 +598,9 @@ float WaveProcessor::ArrivalTime(TH1F* hist, float &maxVal, float threshold, flo
     endFitBin++;
   }
 
-  assert(endFitBin<925);
+  if (endFitBin>925) {
+    return hist->GetBinLowEdge(midFitBin);
+  }
 
   float sumt=0, sumw=0;
 
