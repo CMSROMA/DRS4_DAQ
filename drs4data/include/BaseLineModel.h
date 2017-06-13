@@ -30,7 +30,7 @@ public:
 
 class BaseLineModel {
 public:
-  BaseLineModel(const double *pars, TH1F *data, TH1F *model);
+  BaseLineModel(const double *pars, TH1 *data, TH1F *model);
   ~BaseLineModel();
 
   // Minimization objective
@@ -46,7 +46,7 @@ private:
   BaseLineModel();
 
   // Data
-  const TH1F *_data;
+  const TH1 *_data;
   /* Model histogram */
   const TH1F *_model;
 

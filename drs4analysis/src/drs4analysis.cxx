@@ -11,6 +11,8 @@
 
 #include "TGraph.h"
 #include "TH1F.h"
+#include "TH2F.h"
+#include "TProfile.h"
 #include "TFile.h"
 #include "TTree.h"
 #include "TCanvas.h"
@@ -211,9 +213,10 @@ int main(int argc, const char * argv[])
    rfname += ".root";
    TFile file(rfname, "RECREATE");
 
-   TH1F *havg[4];
+   TH2F *hpulse2D[4];
    for (int ich=0; ich<4; ich++) {
-     havg[ich] = new TH1F(Form("havg_S%d", ich+1), "Average waveform; t (ns); A (mV)", 500, 0., 200.);
+     hpulse2D[ich] = new TH2F(Form("havg2D_S%d", ich+1), "Average waveform; t (ns); A (mV)",
+         500, 0., 200., 550, -550., 50.);
    }
 
    unsigned nCh = 4;
@@ -427,7 +430,7 @@ int main(int argc, const char * argv[])
              for (unsigned ibin=0 ; ibin<1024 ; ibin++) {
                float t = timebins[b][ichan][ibin] - tref + 30.;
                float v = waveform[b][ichan][ibin] + obs[ichan].Value(DRS4_data::baseLine);
-               havg[ichan]->Fill(t, v);
+               hpulse2D[ichan]->Fill(t, v);
              }
              iEvt[ichan]++;
            }
@@ -445,10 +448,11 @@ int main(int argc, const char * argv[])
 
    c.Print(TString(pdfname + ")").Data());
    for (unsigned ichan=0; ichan<4; ichan++) {
-     havg[ichan]->Scale(1./iEvt[ichan]);
+     TProfile *havg = hpulse2D[ichan]->ProfileX(Form("havg_S%d", ichan+1));
+
      if (ichan<2) {
        double pars[1] = {0.};
-       BaseLineModel bl(pars, havg[ichan], hcm[ichan]);
+       BaseLineModel bl(pars, havg, hcm[ichan]);
        ROOT::Fit::Fitter fitter;
        fitter.SetFCN(bl.nPars, bl, pars, bl.DataSize(), true);
        cout << "Fit function set.\n";
@@ -460,8 +464,8 @@ int main(int argc, const char * argv[])
        double factor = res.Parameter(0);
        cout << "Fit result chi2 = " << res.Chi2() << "\n";
        cout << "Fitted factor = " << factor << "\n";
-      // havg[ichan]->Add(hcm[ichan], -factor);
-      // havg[ichan]->Add(hcm[ichan], -1.);
+      // havg->Add(hcm[ichan], -factor);
+      // havg->Add(hcm[ichan], -1.);
 
      }/**/
    }

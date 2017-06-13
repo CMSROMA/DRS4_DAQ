@@ -28,7 +28,7 @@ BaseLineModel::BaseLineModel() :
 }
 
 
-BaseLineModel::BaseLineModel(const double *pars, TH1F *data, TH1F *model) :
+BaseLineModel::BaseLineModel(const double *pars, TH1 *data, TH1F *model) :
     _data(data), _model(model), factor(pars[0]),
     region1start(0.5/data->GetBinWidth(1)+1), region1end(20./data->GetBinWidth(1)+1),
     region2start(140./data->GetBinWidth(1)+1), region2end(180./data->GetBinWidth(1)+1)
