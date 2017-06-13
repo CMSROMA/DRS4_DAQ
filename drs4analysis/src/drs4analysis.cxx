@@ -332,10 +332,8 @@ int main(int argc, const char * argv[])
 
               }
 
-              float blw = 30.;
-              if (chidx < 2) blw = baselineWid;
               DRS4_data::Observables *tmpObs = WaveProcessor::ProcessOnline(timebins[b][chidx],
-                  waveform[b][chidx], 1024, 4., blw);
+                  waveform[b][chidx], 1024, 4., baselineWid);
               obs[ichan] = *tmpObs;
               delete tmpObs; tmpObs = NULL;
            } // Loop over channels
@@ -362,19 +360,20 @@ int main(int argc, const char * argv[])
            events.Fill();
 
            // Plot interesting waveforms
-         /*   if (   obs[3].Value(DRS4_data::arrivalTime) -
+          /* if ( obs[2].Value(DRS4_data::baseLineRMS) > 10.)
+            if (   obs[3].Value(DRS4_data::arrivalTime) -
                 obs[2].Value(DRS4_data::arrivalTime) > 0. )
             if ( ( obs[0].Value(DRS4_data::maxVal) > 15.
                  && obs[0].Value(DRS4_data::arrivalTime) > 100. )
                  ||
                   ( obs[1].Value(DRS4_data::maxVal) > 15.
-                 && obs[1].Value(DRS4_data::arrivalTime) > 100. ) )*/
-           if (eh.event_serial_number < 10)
-     /*      if (   obs[0].Value(DRS4_data::baseLineRMS) > 1
+                 && obs[1].Value(DRS4_data::arrivalTime) > 100. ) )
+           if (eh.event_serial_number < 10)*/
+           if (   obs[0].Value(DRS4_data::baseLineRMS) > 1
                || obs[1].Value(DRS4_data::baseLineRMS) > 1
                || obs[2].Value(DRS4_data::baseLineRMS) > 1
                || obs[3].Value(DRS4_data::baseLineRMS) > 1 )
-           if (   obs[0].Value(DRS4_data::arrivalTime) < 42.
+       /*    if (   obs[0].Value(DRS4_data::arrivalTime) < 42.
                || obs[0].Value(DRS4_data::arrivalTime) > 52.
                || obs[1].Value(DRS4_data::arrivalTime) < 41.
                || obs[1].Value(DRS4_data::arrivalTime) > 51. )*/
