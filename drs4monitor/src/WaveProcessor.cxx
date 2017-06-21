@@ -396,14 +396,14 @@ Observables* WaveProcessor::ProcessOnline( Float_t* RawTimeArr,
                                            Float_t* RawVoltArr,
                                            Int_t RawArrLength,
                                            float threshold,
-                                           float baselineWidth)
+                                           float baselineWidth,
+                                           float thrAfterpulse)
 {
   Observables *output = new Observables;
-	int i;
 
   output->hist = new TH1F("RawTempShape", "RawTempShape", RawArrLength - 1, RawTimeArr); // nonequidistand histogram
 
-	for (i=1; i<=RawArrLength; i++) output->hist -> SetBinContent(i, -RawVoltArr[i]);
+	for (int ibin=1; ibin<=RawArrLength; ibin++) output->hist -> SetBinContent(ibin, -RawVoltArr[ibin]);
 	
 	// baseLine must be calculated first.
 	const int startBin = 3; // Avoid spike at the beginning
@@ -422,14 +422,38 @@ Observables* WaveProcessor::ProcessOnline( Float_t* RawTimeArr,
 
 	// baseline subtraction
 	TH1F *tmpHist = static_cast<TH1F*>(output->hist->Clone()); // baseLine should be subtracted in order to get time of 90% energy deposition of real signal (baseLine excluded)
-	for (i=0; i<RawArrLength; i++) tmpHist->SetBinContent(i, (tmpHist->GetBinContent(i)-output->Value(baseLine)));
+	for (int ibin=0; ibin<RawArrLength; ibin++) tmpHist->SetBinContent(ibin, (tmpHist->GetBinContent(ibin)-output->Value(baseLine)));
 
 	int firstIntegrationBin = max(startBin, ArrivalTimeBin - 5);
   int lastPromptIntegBin = output->hist->FindBin(output->Value(arrivalTime) + 20.);
 
 	output->Value(eTot) = tmpHist->Integral(firstIntegrationBin, endBin, "width");
-	
 	output->Value(ePrompt) = tmpHist->Integral(firstIntegrationBin, lastPromptIntegBin, "width");
+
+	int firstAfterPulseBin = endBin;
+	for (int ibin=lastPromptIntegBin; ibin<endBin; ibin++) {
+	  if (tmpHist->GetBinContent(ibin) < thrAfterpulse) {
+	    firstAfterPulseBin = ibin;
+	    break;
+	  }
+	}
+
+	// Prepare afterpulse params
+	output->Value(afterpulsePeak) = tmpHist->GetBinContent(firstAfterPulseBin);
+	output->Value(afterpulseIntegral) = 0.;
+	// Calculate afterpulse parameters
+	for (int ibin=firstAfterPulseBin; ibin<endBin; ibin++) {
+	  double v = tmpHist->GetBinContent(ibin);
+	  if (v > output->Value(afterpulsePeak)) {
+	    output->Value(afterpulsePeak) = v;
+	  }
+	 // output->Value(afterpulseIntegral) += v;
+	  if (v > thrAfterpulse) {
+	    output->Value(afterpulseIntegral) += tmpHist->GetBinWidth(ibin);
+	  }
+	}
+
+	output->Value(afterpulseRMS) = CalcHistRMS(tmpHist, firstAfterPulseBin, endBin);
 
 	delete tmpHist;
 

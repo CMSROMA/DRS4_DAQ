@@ -219,9 +219,10 @@ int main(int argc, const char * argv[])
          500, 0., 200., 550, -550., 50.);
    }
 
-   unsigned nCh = 4;
+   const unsigned nCh = 4;
    DRS4_data::Observables obs[nCh];
    TTree events("events", "events");
+   float thresholdAfterpulse[nCh] = {3, 3.5, 50., 25.};
 
    for (unsigned iCh=0; iCh<nCh; iCh++) {
 
@@ -333,7 +334,7 @@ int main(int argc, const char * argv[])
               }
 
               DRS4_data::Observables *tmpObs = WaveProcessor::ProcessOnline(timebins[b][chidx],
-                  waveform[b][chidx], 1024, 4., baselineWid);
+                  waveform[b][chidx], 1024, 4., baselineWid, thresholdAfterpulse[chidx]);
               obs[ichan] = *tmpObs;
               delete tmpObs; tmpObs = NULL;
            } // Loop over channels
@@ -356,6 +357,11 @@ int main(int argc, const char * argv[])
              }
            }
            if (saturated) continue;
+
+           // Filter out events with afterpulses in S3,4
+     //      if (   obs[2].Value(DRS4_data::afterpulseIntegral) > thresholdAfterpulse[2]
+       //        || obs[3].Value(DRS4_data::afterpulseIntegral) > thresholdAfterpulse[3]) continue;
+
            // Fill observables into the tree
            events.Fill();
 
@@ -368,11 +374,13 @@ int main(int argc, const char * argv[])
                  ||
                   ( obs[1].Value(DRS4_data::maxVal) > 15.
                  && obs[1].Value(DRS4_data::arrivalTime) > 100. ) )
-           if (eh.event_serial_number < 10)*/
+           if (eh.event_serial_number < 10)
            if (   obs[0].Value(DRS4_data::baseLineRMS) > 1
                || obs[1].Value(DRS4_data::baseLineRMS) > 1
                || obs[2].Value(DRS4_data::baseLineRMS) > 1
-               || obs[3].Value(DRS4_data::baseLineRMS) > 1 )
+               || obs[3].Value(DRS4_data::baseLineRMS) > 1 )*/
+             if (   obs[2].Value(DRS4_data::afterpulseIntegral) > thresholdAfterpulse[2]
+                 || obs[3].Value(DRS4_data::afterpulseIntegral) > thresholdAfterpulse[3])
        /*    if (   obs[0].Value(DRS4_data::arrivalTime) < 42.
                || obs[0].Value(DRS4_data::arrivalTime) > 52.
                || obs[1].Value(DRS4_data::arrivalTime) < 41.
