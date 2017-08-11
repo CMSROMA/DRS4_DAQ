@@ -392,6 +392,8 @@ Observables *WaveProcessor::ProcessOnline( Float_t* RawTimeArr,
   return ProcessOnline( RawTimeArr, RawVoltArr, RawArrLength, triggerHeight, delay);
 }
 
+const double WaveProcessor::pulseLen = 20.;
+
 Observables* WaveProcessor::ProcessOnline( Float_t* RawTimeArr,
                                            Float_t* RawVoltArr,
                                            Int_t RawArrLength,
@@ -425,14 +427,14 @@ Observables* WaveProcessor::ProcessOnline( Float_t* RawTimeArr,
 	for (int ibin=0; ibin<RawArrLength; ibin++) tmpHist->SetBinContent(ibin, (tmpHist->GetBinContent(ibin)-output->Value(baseLine)));
 
 	int firstIntegrationBin = max(startBin, ArrivalTimeBin - 5);
-  int lastPromptIntegBin = output->hist->FindBin(output->Value(arrivalTime) + 20.);
+  int lastPromptIntegBin = output->hist->FindBin(output->Value(arrivalTime) + pulseLen);
 
 	output->Value(eTot) = tmpHist->Integral(firstIntegrationBin, endBin, "width");
 	output->Value(ePrompt) = tmpHist->Integral(firstIntegrationBin, lastPromptIntegBin, "width");
 
 	int firstAfterPulseBin = endBin;
 	for (int ibin=lastPromptIntegBin; ibin<endBin; ibin++) {
-	  if (tmpHist->GetBinContent(ibin) < thrAfterpulse) {
+	  if (tmpHist->GetBinContent(ibin) < 2*threshold) {
 	    firstAfterPulseBin = ibin;
 	    break;
 	  }
@@ -440,20 +442,44 @@ Observables* WaveProcessor::ProcessOnline( Float_t* RawTimeArr,
 
 	// Prepare afterpulse params
 	output->Value(afterpulsePeak) = tmpHist->GetBinContent(firstAfterPulseBin);
-	output->Value(afterpulseIntegral) = 0.;
+	std::vector<double> aftIntegrals;
+	double aftInteg = 0.;
 	// Calculate afterpulse parameters
+	// Tallest afterpulse peak and longest afterpulse
 	for (int ibin=firstAfterPulseBin; ibin<endBin; ibin++) {
 	  double v = tmpHist->GetBinContent(ibin);
 	  if (v > output->Value(afterpulsePeak)) {
 	    output->Value(afterpulsePeak) = v;
 	  }
-	 // output->Value(afterpulseIntegral) += v;
+
 	  if (v > thrAfterpulse) {
-	    output->Value(afterpulseIntegral) += tmpHist->GetBinWidth(ibin);
+	    aftInteg += tmpHist->GetBinWidth(ibin);
+	  }
+	  else {
+	    if (v < threshold) {
+        if (aftInteg > .001) {
+          aftIntegrals.push_back(aftInteg);
+        }
+        aftInteg = 0.;
+      }
 	  }
 	}
+  if (aftInteg > .001) {
+    aftIntegrals.push_back(aftInteg);
+  }
+
+  output->Value(afterpulseIntegral) = 0.;
+  for (int iap=0; iap<aftIntegrals.size(); iap++) {
+    if (aftIntegrals.at(iap) > output->Value(afterpulseIntegral)) {
+      output->Value(afterpulseIntegral) = aftIntegrals.at(iap);
+    }
+  }
+
 
 	output->Value(afterpulseRMS) = CalcHistRMS(tmpHist, firstAfterPulseBin, endBin);
+  output->Value(afterpulseTime) = ArrivalTime(output->hist, output->Value(afterpulsePeak),
+                                           2.5*threshold, output->Value(baseLine),
+                                           firstAfterPulseBin, endBin, 3, 0.25);
 
 	delete tmpHist;
 
@@ -527,14 +553,31 @@ float WaveProcessor::ArrivalTime(TH1F* hist, float &maxVal, float threshold, flo
 
   if ( !hist ) return -1.;
 
+  // First threshold crossing
+  int thrCrossBin = -1;
+  for (int ibin=firstBin; ibin<lastBin; ibin++) {
+    double sample = hist->GetBinContent(ibin) - baseline;
+    if (sample > threshold) {
+      thrCrossBin = ibin;
+      break;
+    }
+  }
+
+  if (thrCrossBin < 0) {
+    maxVal = -1.;
+    return -1.;
+  }
+  double thrCrossTime = hist->GetBinLowEdge(thrCrossBin);
+  int pulseEndBin = min(hist->FindBin(thrCrossTime+pulseLen), lastBin);
+
   // First-order correction of maxVal:
   // Parabolic shape of the pulse peak is assumed
   // and maxVal is extracted by solving a system of
   // 3 eqs. with 3 unknowns, with parameters v1-3 and t1-3.
-  int maxBin = firstBin;
+  int maxBin = thrCrossBin;
   double maxSample = hist->GetBinContent(maxBin) - baseline;
 
-  for (int ibin=firstBin; ibin<lastBin; ibin++) {
+  for (int ibin=thrCrossBin; ibin<pulseEndBin; ibin++) {
     double sample = hist->GetBinContent(ibin) - baseline;
     if (sample > maxSample) {
       maxSample = sample;
@@ -556,32 +599,18 @@ float WaveProcessor::ArrivalTime(TH1F* hist, float &maxVal, float threshold, flo
   /**/
   //double maxVal = maxSample;
 
-  if (maxSample < threshold) return -1.;
-
-  float tt1 = 0;
-  int nBint1 = 0;
-
-  for (int ibin=firstBin; ibin<=maxBin; ibin++) {
-
-    if (hist->GetBinContent(ibin) - baseline > threshold) {
-      tt1 = hist->GetBinLowEdge(ibin);
-      nBint1 = ibin;
-      break;
-    }
-  }
 
   // Return simple threshold crossing point (uncomment for debugging)
- // return tt1;
+ // return thrCrossTime;
 
-  assert(tt1<180);
-
+  // Rough solutions for low pulses
   if (0.9*maxSample< threshold) {
-    return tt1 - risetime;
+    return thrCrossTime - risetime;
   }
 
   if (maxSample*fraction <= threshold) {
 
-    for (int ibin=nBint1; ibin<=maxBin; ibin++) {
+    for (int ibin=thrCrossBin; ibin<=maxBin; ibin++) {
 
       if (hist->GetBinContent(ibin) - baseline > 0.9*maxSample) {
         return hist->GetBinLowEdge(ibin) - risetime;
@@ -590,7 +619,7 @@ float WaveProcessor::ArrivalTime(TH1F* hist, float &maxVal, float threshold, flo
 
   } // maxSample*fraction <= threshold
 
-  /*** Constant fraction for tall signals ***/
+  /*** Constant fraction for sufficiently tall signals ***/
 
   int midFitBin = 0;
   int endFitBin = 0;
@@ -603,7 +632,7 @@ float WaveProcessor::ArrivalTime(TH1F* hist, float &maxVal, float threshold, flo
   int nBinsTimeWing = static_cast<int>(timeWing/200*kNumberOfBins + 0.5);
 
 
-  for (int ibin=nBint1; ibin<=maxBin; ibin++) {
+  for (int ibin=thrCrossBin; ibin<=maxBin; ibin++) {
     if (hist->GetBinContent(ibin) - baseline > fraction*maxVal) {
       midFitBin = ibin;
       break;

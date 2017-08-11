@@ -107,6 +107,7 @@ class WaveProcessor {
     DRS4_data::Observables* ProcessOnline(Float_t* , Float_t* , Int_t);
     static DRS4_data::Observables* ProcessOnline(Float_t* time, Float_t* amplitude, Int_t length,
                                                  float threshold, float trigDelay, float thrAfterpulse = 5.);
+    static const double pulseLen;
 
     Float_t GetFWHM(int, Float_t);
     Float_t GetFWHM(int, Float_t, Float_t); // third float is in percent, 50% for FWHM, 10 % - width at 10

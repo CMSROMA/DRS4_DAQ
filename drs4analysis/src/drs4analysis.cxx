@@ -22,6 +22,8 @@
 #include "Fit/FitResult.h"
 #include "Math/MinimizerOptions.h"
 #include "TRegexp.h"
+#include "TLegend.h"
+#include "TLegendEntry.h"
 
 #include "WaveProcessor.h"
 #include "DRS4_data.h"
@@ -169,21 +171,33 @@ int main(int argc, const char * argv[])
 
    /*** Prepare oscillogram plots ***/
    TCanvas c("can", "cancan", 800, 600);
-   gStyle->SetPaperSize(18, 12);
+//   gStyle->SetPaperSize(18, 12);
+   gStyle->SetPaperSize(8, 6);
    gStyle->SetLabelSize(0.06, "XY");
    gStyle->SetTitleSize(0.06, "XY");
-   gStyle->SetPadLeftMargin(0.12);
-   gStyle->SetPadBottomMargin(0.12);
-   c.Divide(2, 2, .01, .01);
+   gStyle->SetPadLeftMargin(0.15);
+   gStyle->SetPadBottomMargin(0.15);
+   c.SetLeftMargin(0.12);
+   c.SetBottomMargin(0.13);
+/*   c.Divide(2, 2, .01, .01);
    c.GetPad(1)->SetGrid(1, 0);
    c.GetPad(2)->SetGrid(1, 0);
    c.GetPad(3)->SetGrid(1, 0);
    c.GetPad(4)->SetGrid(1, 0);
-   TH1F frame("frame", "frame; t (ns); A (mV)", 10, 0., 200);
-   frame.SetMinimum(-500);
-   frame.SetMaximum(50);
+   */
+   TH1F frame("frame", "frame; t (ns); u (mV)", 10, 0., 200);
+   frame.SetMinimum(-200);
+   frame.SetMaximum(20);
    frame.SetLineColor(kGray);
    frame.SetStats(false);
+   TLegend leg(.5, .2, .8, .4);
+   leg.SetTextFont(42);
+   leg.SetTextSize(.06);
+   leg.SetBorderSize(0);
+   leg.SetFillStyle(4001);
+   leg.AddEntry("S2", "S2 #times10", "l")->SetLineColor(2);
+   leg.AddEntry("S3", "S3", "l")->SetLineColor(3);
+   leg.AddEntry("S4", "S4", "l")->SetLineColor(4);
    TString pdfname(genname);
    pdfname += ".pdf";
    bool firstpage = true;
@@ -379,26 +393,45 @@ int main(int argc, const char * argv[])
                || obs[1].Value(DRS4_data::baseLineRMS) > 1
                || obs[2].Value(DRS4_data::baseLineRMS) > 1
                || obs[3].Value(DRS4_data::baseLineRMS) > 1 )*/
-             if (   obs[2].Value(DRS4_data::afterpulseIntegral) > thresholdAfterpulse[2]
-                 || obs[3].Value(DRS4_data::afterpulseIntegral) > thresholdAfterpulse[3])
+             if (   obs[2].Value(DRS4_data::afterpulseIntegral) > 7.
+                 || obs[3].Value(DRS4_data::afterpulseIntegral) > 7.)
        /*    if (   obs[0].Value(DRS4_data::arrivalTime) < 42.
                || obs[0].Value(DRS4_data::arrivalTime) > 52.
                || obs[1].Value(DRS4_data::arrivalTime) < 41.
                || obs[1].Value(DRS4_data::arrivalTime) > 51. )*/
            {
+             c.Clear();
+             c.cd(0);
+             double time = obs[3].Value(DRS4_data::arrivalTime);
+             double aftertime = obs[3].Value(DRS4_data::afterpulseTime);
+             double delay = aftertime - time;
+             double peak = obs[3].Value(DRS4_data::afterpulsePeak);
+             frame.SetTitle(Form("Evt. %d, t_{1} = %.1f ns, t_{2} = %.1f ns",
+                 eh.event_serial_number, time, aftertime, peak));
+             frame.DrawCopy();
+             leg.Draw();
 
-             for (unsigned ichan=0; ichan<4; ichan++) {
-               TGraph *gr = new TGraph(1024, timebins[b][ichan], waveform[b][ichan]);
+             for (unsigned ichan=1; ichan<4; ichan++) {
+               TGraph *gr = new TGraph(kNumberOfBins, timebins[b][ichan], waveform[b][ichan]);
+
+               if (ichan==1)
+                 for (int itbin=0; itbin<kNumberOfBins; itbin++) {
+                   double t, v;
+                   gr->GetPoint(itbin, t, v);
+                   gr->SetPoint(itbin, t, v*10);
+                 }
 
                if (gr->IsZombie()) {
                  printf("Zombie.\n");
                  exit(0);
                }
-               c.cd(ichan+1);
-               frame.SetTitle(Form("Ch. %d, baseline RMS %.1f, evt. %d",
-                   ichan+1, obs[ichan].Value(DRS4_data::baseLineRMS), eh.event_serial_number));
-               frame.DrawCopy();
-               gr->SetLineColor(kRed);
+//               c.cd(ichan+1);
+//               frame.SetTitle(Form("Ch. %d, baseline RMS %.1f, evt. %d",
+  //                 ichan+1, obs[ichan].Value(DRS4_data::baseLineRMS), eh.event_serial_number));
+//               frame.SetTitle(Form("Ch. %d, Afterpulse length %.1f, evt. %d",
+  //                 ichan+1, obs[ichan].Value(DRS4_data::afterpulseIntegral), eh.event_serial_number));
+    //           frame.DrawCopy();
+               gr->SetLineColor(ichan+1);
                gr->SetLineWidth(1);
                gr->Draw("l");
              }
@@ -411,7 +444,8 @@ int main(int argc, const char * argv[])
                c.Print(pdfname.Data());
              }
              for (int ipad=1; ipad<=4; ipad++) {
-               c.GetPad(ipad)->Clear();
+               if (c.GetPad(ipad))
+                 c.GetPad(ipad)->Clear();
              }
            } // if  printing pdf
 

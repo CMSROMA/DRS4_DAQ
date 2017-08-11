@@ -40,6 +40,7 @@ namespace DRS4_data {
                       afterpulsePeak,
                       afterpulseIntegral,
                       afterpulseRMS,
+                      afterpulseTime,
                       nObservables      // Keep this because config needs this number at compile time
                     };
 
@@ -60,6 +61,7 @@ namespace DRS4_data {
       observables.insert(std::pair<kObservables, Observable>(afterpulsePeak, Observable("afterpulsePeak", "Afterpulse peak", "mV", 0)));
       observables.insert(std::pair<kObservables, Observable>(afterpulseIntegral, Observable("afterpulseIntegral", "Afterpulse integral", "mV*ns", 0)));
       observables.insert(std::pair<kObservables, Observable>(afterpulseRMS, Observable("afterpulseRMS", "Afterpulse RMS", "mV", 0)));
+      observables.insert(std::pair<kObservables, Observable>(afterpulseTime, Observable("afterpulseTime", "t_{Afterpulse}", "ns", 0)));
     }
     ~Observables() {
       if (hist) delete hist;
