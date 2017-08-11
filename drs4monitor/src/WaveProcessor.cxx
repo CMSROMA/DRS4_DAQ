@@ -426,11 +426,13 @@ Observables* WaveProcessor::ProcessOnline( Float_t* RawTimeArr,
 	TH1F *tmpHist = static_cast<TH1F*>(output->hist->Clone()); // baseLine should be subtracted in order to get time of 90% energy deposition of real signal (baseLine excluded)
 	for (int ibin=0; ibin<RawArrLength; ibin++) tmpHist->SetBinContent(ibin, (tmpHist->GetBinContent(ibin)-output->Value(baseLine)));
 
-	int firstIntegrationBin = max(startBin, ArrivalTimeBin - 5);
-  int lastPromptIntegBin = output->hist->FindBin(output->Value(arrivalTime) + pulseLen);
+//  int firstIntegrationBin = max(startBin, ArrivalTimeBin - 5);
+//  int lastPromptIntegBin = output->hist->FindBin(output->Value(arrivalTime) + pulseLen);
+  int firstIntegrationBin = blEndBin+1;
+  int lastPromptIntegBin = output->hist->FindBin(output->hist->GetBinLowEdge(blEndBin) + pulseLen);
 
 	output->Value(eTot) = tmpHist->Integral(firstIntegrationBin, endBin, "width");
-	output->Value(ePrompt) = tmpHist->Integral(firstIntegrationBin, lastPromptIntegBin, "width");
+  output->Value(ePrompt) = tmpHist->Integral(firstIntegrationBin, lastPromptIntegBin, "width");
 
 	int firstAfterPulseBin = endBin;
 	for (int ibin=lastPromptIntegBin; ibin<endBin; ibin++) {
