@@ -395,7 +395,7 @@ int MonitorFrame::Run() {
 
   while(!f_stop) {
 
-    rawWave = fifo->read();
+    rawWave = fifo->Read();
 
     if(rawWave) {
       iEvtSerial = rawWave->header.getEventNumber();

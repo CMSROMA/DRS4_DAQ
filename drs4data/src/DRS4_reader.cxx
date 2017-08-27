@@ -93,7 +93,7 @@ int DRS4_reader::run(const char *filename, DRS4_writer * const writer) {
 
   while(!f_stop) {
 
-    rawWave = fifo->read();
+    rawWave = fifo->Read();
 
     if(rawWave) {
       iEvtSerial = rawWave->header.getEventNumber();
