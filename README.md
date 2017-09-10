@@ -5,6 +5,8 @@ DAQ code for the DRS4 evaluation board by S. Ritt, PSI Villingen, CH (http://drs
 The code in this repository is designed for the puspose of beam tests at the Fermilab Test Beam Facility, but can be used in a wider range of applications.
 
 Prerequisites:
-libusb-1.0
-wxWidgets (https://www.wxwidgets.org/)
-DRS4 source code (https://www.psi.ch/drs/software-download)
+libusb-1.0  
+wxWidgets (https://www.wxwidgets.org/)  
+DRS4 source code (https://www.psi.ch/drs/software-download)  
+ROOT data analysis framework (https://root.cern.ch/)  
+
