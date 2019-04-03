@@ -10,10 +10,10 @@ def waitAnswer(response):
                 return reply
 
 def sendCommand(command):
-    if command == 'i':
+    if (command.lower()) == 'i' :
         con.write("i".encode())
         return waitAnswer('INH')
-    elif command == 'o':
+    elif (command.lower()) == 'o' :
         con.write("o".encode())
         return waitAnswer('ON')
     elif command == '1':
