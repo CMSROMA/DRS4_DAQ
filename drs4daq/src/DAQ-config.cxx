@@ -8,6 +8,8 @@
 #include "Riostream.h"
 #include "TString.h"
 #include "TRegexp.h"
+#include "TObjArray.h"
+#include "TObjString.h"
 
 #include "DAQ-config.h"
 
@@ -19,6 +21,7 @@ config::config(Observables *_obs) :
   _tRed(10), _tRed2D(50), _xRed(2), _yRed(2),
   sampleRate(5), inputRange(0), triggerLevel(-0.05),
   triggerNegative(true), trigDelay(150), triggerSource(1),
+  outDir("./"),
   obs(_obs)
 {
   for(int i=0; i<nObservables; i++) {
@@ -76,6 +79,7 @@ int config::DumpOptions() const {
     break;
   }
 
+std::cout << "Output Directory: " << outDir << std::endl;
   return 0;
 }
 
@@ -228,6 +232,13 @@ int config::ParseOptions(std::ifstream *input)
        line.Contains("source", TString::kIgnoreCase) )    {
       TString par = line(number_patt);
       triggerSource = par.Atoi();
+      continue;
+    }
+
+    if(line.Contains("output ", TString::kIgnoreCase) &&
+       line.Contains("dir ", TString::kIgnoreCase) )    {
+      TObjArray *tx = line.Tokenize(" ");
+      outDir  = ((TObjString *)(tx->At(2)))->String();
       continue;
     }
 

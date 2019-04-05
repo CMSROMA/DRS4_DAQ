@@ -42,6 +42,9 @@ public:
 	unsigned trigDelay;  // Trigger delay in ns
 	int triggerSource;
 
+    /*** Output config ***/
+	TString outDir;
+ 
 private:
 	DRS4_data::Observables *obs;
 

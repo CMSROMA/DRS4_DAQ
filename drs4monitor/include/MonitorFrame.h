@@ -8,6 +8,8 @@
 #ifndef MONITORFRAME_HH_
 #define MONITORFRAME_HH_
 
+//#define ROOT_OUTPUT
+
 #include <queue>
 
 #include <TGFrame.h>
@@ -16,10 +18,16 @@
 #include "TStopwatch.h"
 #include "WaveProcessor.h"
 
+#ifdef ROOT_OUTPUT
+#include <TTree.h>
+#include <TFile.h>
+#include "Event.h"
+#endif
 
 #include "observables.h"
 
 class TGLabel;
+class TGHProgressBar;
 class TCanvas;
 class TRootCanvas;
 class TH1F;
@@ -59,15 +67,14 @@ public:
 
 //    const static int autosavePeriod = 3600; // Autosave period in s
 
-    const struct histo_limits {
-      short histolo[DRS4_data::nObservables];
-      short histohi[DRS4_data::nObservables];
-      histo_limits(const short *_lo, const short *_hi) {
-        for (int i=0; i<DRS4_data::nObservables; i++) { histolo[i] = _lo[i]; histolo[i] = _hi[i]; }
-      }
-      ~histo_limits() {};
-    } limits;
-
+    /* const struct histo_limits { */
+    /*   short histolo[DRS4_data::nObservables]; */
+    /*   short histohi[DRS4_data::nObservables]; */
+    /*   histo_limits(const short *_lo, const short *_hi) { */
+    /*     for (int i=0; i<DRS4_data::nObservables; i++) { histolo[i] = _lo[i]; histolo[i] = _hi[i]; } */
+    /*   } */
+    /*   ~histo_limits() {}; */
+    /* } limits; */
 
 
 protected:
@@ -79,18 +86,21 @@ protected:
   TGLabel *nEvtProT;
   TGLabel *rateT;
   TGLabel *temperatureT;
+  TGLabel *filenameT;
+  TGLabel *configT;
+  TGHProgressBar    *fHProg2;
 
-  TCanvas *fCanvas01;
-  TRootCanvas *frCanvas01;
-  TCanvas *fCanvas02;
-  TRootCanvas *frCanvas02;
-  TCanvas *fCanvas2D;
-  TRootCanvas *frCanvas2D;
-  TCanvas *fCanvasOsc;
-  TRootCanvas *frCanvasOsc;
+  /* TCanvas *fCanvas01; */
+  /* TRootCanvas *frCanvas01; */
+  /* TCanvas *fCanvas02; */
+  /* TRootCanvas *frCanvas02; */
+  /* TCanvas *fCanvas2D; */
+  /* TRootCanvas *frCanvas2D; */
+  /* TCanvas *fCanvasOsc; */
+  /* TRootCanvas *frCanvasOsc; */
 
-  const short tRed; // Update frequency reduction factor
-  const short tRed2D; // Update frequency reduction factor for 2D histograms
+  /* const short tRed; // Update frequency reduction factor */
+  /* const short tRed2D; // Update frequency reduction factor for 2D histograms */
 
   const float baseLineWidth; // Width of window for the baseline calculation
 
@@ -98,12 +108,13 @@ protected:
 
   bool timestamped;
 
-  TH1F *histo[2][DRS4_data::nObservables];
-  TH2F *eTot12;
-  TH2F *ePrompt12;
-  TH2F *time12;
-  TH2F *time34;
-//  TTree *events;
+  /* TH1F *histo[2][DRS4_data::nObservables]; */
+  /* TH2F *eTot12; */
+  /* TH2F *ePrompt12; */
+  /* TH2F *time12; */
+  /* TH2F *time34; */
+  //  TTree *events;
+
   TRandom3 dice;
   TStopwatch timer;
   int timeLastSave;
@@ -144,7 +155,13 @@ protected:
   unsigned iEvtProcessed; // Number of events processed by the reader
   unsigned iEvtSerial;    // Serial number reported by the last processed event
 
+#ifndef ROOT_OUTPUT
   std::ofstream *file;
+#else
+  TFile *file;
+  TTree *outTree;
+  H4DAQ::Event *h4daqEvent;
+#endif
 
   bool f_stop;
   bool f_stopWhenEmpty;
@@ -152,10 +169,9 @@ protected:
 
   /* Monitoring */
 
-  float *timePoints;
-  float *amplitudes;
-
-  int itRed, itRed2D;
+  /* float *timePoints; */
+  /* float *amplitudes; */
+  /* int itRed, itRed2D; */
 
   int Run();
   void FillHistos(Observables *[2]);

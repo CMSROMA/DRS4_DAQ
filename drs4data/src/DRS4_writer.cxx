@@ -155,7 +155,14 @@ void DRS4_writer::run( DRS4_writer* w, const unsigned nEvtMax) {
 
     } // Loop over the boards
 
-    w->fifo->Write(w->event); // Adding the pointer to fifo.
+    
+    bool writeToFifo=(w->fifo->Write(w->event)==0); 
+    while(!writeToFifo) //wait for Fifo to empty out
+      {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+	writeToFifo=(w->fifo->Write(w->event)==0); 
+      }
+
     w->event = NULL;          // Guarantee not to accidentally write via w->event
     w->iEvent++;
     if (w->iEvent%500 == 0) {

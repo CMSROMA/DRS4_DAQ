@@ -2,6 +2,8 @@
 #include <assert.h>
 #define DEBUG_UNPACKER 0
 
+using namespace H4DAQ;
+
 void Event::createOutBranches (TTree* tree,treeStructData& treeData)
 {
   //Instantiate the tree branches

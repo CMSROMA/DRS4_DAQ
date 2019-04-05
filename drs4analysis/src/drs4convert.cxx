@@ -74,6 +74,8 @@ int readDataFileHeader (std::ifstream &, FHEADER  &, THEADER  &, BHEADER  &,
 
 /*-----------------------------------------------------------------------------*/
 
+using namespace H4DAQ;
+
 int main(int argc, const char * argv[])
 {
    FHEADER  fh;
@@ -134,7 +136,7 @@ int main(int argc, const char * argv[])
      std::cout << "Cannot open " << outName << std::endl;
    
    TTree * outTree = new TTree ("H4tree", "H4 testbeam tree") ;
-   Event* event_ = new Event(outTree) ;
+   H4DAQ::Event* event_ = new H4DAQ::Event(outTree) ;
 
    /*** Prepare tree and output histos ***/
    for (unsigned ifile=0; ifile<filenames.size(); ifile++) {
@@ -190,6 +192,8 @@ int main(int argc, const char * argv[])
              return 0;
            }
 
+	   int freq=round(1./bin_width[b][0][0]);
+
            for (unsigned ichan=0 ; ichan<4 ; ichan++) {
              chn_index[ichan] = 0;
            }
@@ -211,54 +215,34 @@ int main(int argc, const char * argv[])
 
            // Remove spikes
            // Wrote own function because trigger cell is not always well written in file
-           if (removeSpikes) DRS4_data::RemoveSpikes(voltage, 20, 2);
-
-           int nsaturated[4] = {0,0,0,0};
+           // if (removeSpikes) DRS4_data::RemoveSpikes(voltage, 20, 2);
 
            // Process data in all channels
            for (unsigned ichan=0 ; ichan<4 ; ichan++) {
-
              int chidx = chn_index[ichan];
-              for (int ibin=0 ; ibin<1024 ; ibin++) {
+	     float t = 0;
+	     for (int ibin=0 ; ibin<1024 ; ibin++) {
+	       if (ibin==0)
+	       //get calibrated times
+	       if (ibin>0)
+		 t += bin_width[b][chidx][(ibin+tch.trigger_cell-1) % 1024];
+	       // Voltage data is encoded in units of 0.1 mV
+	       float v = static_cast<float>(voltage[ichan][ibin]) / 10;
 
-                 float t = 0;
-                 timebins[b][chidx][ibin]=0;
-                 for (int jbin =0; jbin<ibin ; jbin++)
-                    t += bin_width[b][chidx][(jbin+tch.trigger_cell) % 1024];
-
-                 timebins[b][chidx][ibin] = t;
-
-                 // Voltage data is encoded in units of 0.1 mV
-                 float v = static_cast<float>(voltage[ichan][ibin]) / 10;
-                 // Subtract time-dependent baseline
-                 // if (chidx < 2) {
-                 //   int baselineBin = hcm[chidx]->FindBin(t);
-                 //   float blbWidth = hcm[chidx]->GetBinWidth(baselineBin);
-                 //   float thisbWid = bin_width[b][chidx][(ibin+tch.trigger_cell) % 1024];
-                 //   v -= hcm[chidx]->GetBinContent(baselineBin)*thisbWid/blbWidth;
-                 // }/**/
-                 waveform[b][chidx][ibin] = v;
-		 if (ichan==1 && eh.event_serial_number<10)
-		     std::cout << "ibin " << ibin << " t " << timebins[b][chidx][ibin] << " v " << waveform[b][chidx][ibin] << std::endl; 
-
-                  //This is a sample! 
-                  digiData aDigiSample ;
-                  aDigiSample.board = b;
-                  aDigiSample.channel = chidx;
-                  aDigiSample.group = 0;
-                  aDigiSample.frequency = 2 ;
-                  aDigiSample.startIndexCell = tch.trigger_cell;
-                  aDigiSample.sampleIndex = ibin;
-                  aDigiSample.sampleTime = timebins[b][chidx][ibin];
-                  aDigiSample.sampleRaw = 0xFFFF; //put dummy value
-                  aDigiSample.sampleValue = waveform[b][chidx][ibin];
-                  event_->digiValues.push_back (aDigiSample) ;
-              }
-
+	       digiData aDigiSample ;
+	       aDigiSample.board = b;
+	       aDigiSample.channel = chidx;
+	       aDigiSample.group = 0;
+	       aDigiSample.frequency = freq;
+	       aDigiSample.startIndexCell = tch.trigger_cell;
+	       aDigiSample.sampleIndex = ibin;
+	       aDigiSample.sampleTime = t;
+	       aDigiSample.sampleRaw = 0xFFFF; //put dummy value
+	       aDigiSample.sampleValue = v;
+	       event_->digiValues.push_back (aDigiSample) ;
+	     }
+	     
            } // Loop over channels
-
-	   //           events.Fill();
-
         } // Loop over the boards
 	event_->Fill();
       } // Loop over events
@@ -268,7 +252,7 @@ int main(int argc, const char * argv[])
       //      std::cout << "Read " << eh.event_serial_number << " events from this file. Event tree has a total of " << events.GetEntries() << " entries.\n";
    } // Loop over files
    
-
+   
    outFile->ls () ;
    outFile->cd () ;
    outTree->Write ("",TObject::kOverwrite) ;

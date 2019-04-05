@@ -5,8 +5,8 @@ add_library (drs4data SHARED src/DRS4_fifo.cxx
                              src/BaseLineModel.cxx
                              )
 
-target_include_directories(drs4data PUBLIC include ${DRS4_INCLUDE_DIRS} ${ROOT_INCLUDE_DIRS} )
-target_link_libraries ( drs4data PRIVATE ${ROOT_LIBRARIES})
+target_include_directories(drs4data PUBLIC include ../drs4analysis/include ${DRS4_INCLUDE_DIRS} ${ROOT_INCLUDE_DIRS} )
+target_link_libraries ( drs4data PRIVATE drs4analysis ${ROOT_LIBRARIES})
 
 install( TARGETS drs4data LIBRARY DESTINATION lib )
 

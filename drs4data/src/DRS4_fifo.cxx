@@ -68,7 +68,7 @@ namespace DRS4_data {
   // Write() pushes the passed pointer. The caller must have already reserved the memory.
   int DRS4_fifo::Write(RawEvent * pt) {
     if (eventQueue.size() > maxSize) {
-      std::cout << "FIFO buffer full!" << std::endl;
+      // std::cout << "FIFO buffer full!" << std::endl;
       return -1;
     }
     eventQueue.push(pt);

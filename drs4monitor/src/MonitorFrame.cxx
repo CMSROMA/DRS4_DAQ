@@ -11,6 +11,7 @@
 #include "TGTextView.h"
 #include "TGText.h"
 #include "TGLabel.h"
+#include "TGProgressBar.h"
 #include "TCanvas.h"
 #include "TRootCanvas.h"
 #include "TH1F.h"
@@ -36,96 +37,100 @@
 using namespace DRS4_data;
 
 
+
 MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _drs) :
-  TGMainFrame(p, 250, 200),
-  limits(opt->histolo, opt->histohi),
+  TGMainFrame(p, 250, 300),
+  // limits(opt->histolo, opt->histohi),
   options(opt),
-  fCanvas01(new TCanvas("DRS4Canvas01", "DRS4 Monitor 01", opt->_w, opt->_h)),
-  frCanvas01(new TRootCanvas(fCanvas01, "DRS4 Monitor 01", 0, 200, opt->_w, opt->_h)),
-  fCanvas02(new TCanvas("DRS4Canvas02", "DRS4 Monitor 02", opt->_w, opt->_h)),
-  frCanvas02(new TRootCanvas(fCanvas02, "DRS4 Monitor 02", 0, 200, opt->_w, opt->_h)),
-  fCanvas2D(new TCanvas("DRS4Canvas2D", "DRS4 Monitor 2D", opt->_w*2/3, opt->_h)),
-  frCanvas2D(new TRootCanvas(fCanvas2D, "DRS4 Monitor 2D", 0, 200, opt->_w*2/3, opt->_h)),
-  fCanvasOsc(new TCanvas("DRS4CanvasOsc", "DRS4 oscillogram", opt->_w/3, opt->_h/2)),
-  frCanvasOsc(new TRootCanvas(fCanvasOsc, "DRS4 oscillogram", 0, 200, opt->_w/3, opt->_h/2)),
-  tRed(opt->_tRed), tRed2D(opt->_tRed2D),
+  // fCanvas01(new TCanvas("DRS4Canvas01", "DRS4 Monitor 01", opt->_w, opt->_h)),
+  // frCanvas01(new TRootCanvas(fCanvas01, "DRS4 Monitor 01", 0, 200, opt->_w, opt->_h)),
+  // fCanvas02(new TCanvas("DRS4Canvas02", "DRS4 Monitor 02", opt->_w, opt->_h)),
+  // frCanvas02(new TRootCanvas(fCanvas02, "DRS4 Monitor 02", 0, 200, opt->_w, opt->_h)),
+  // fCanvas2D(new TCanvas("DRS4Canvas2D", "DRS4 Monitor 2D", opt->_w*2/3, opt->_h)),
+  // frCanvas2D(new TRootCanvas(fCanvas2D, "DRS4 Monitor 2D", 0, 200, opt->_w*2/3, opt->_h)),
+  // fCanvasOsc(new TCanvas("DRS4CanvasOsc", "DRS4 oscillogram", opt->_w/3, opt->_h/2)),
+  // frCanvasOsc(new TRootCanvas(fCanvasOsc, "DRS4 oscillogram", 0, 200, opt->_w/3, opt->_h/2)),
+  // tRed(opt->_tRed), tRed2D(opt->_tRed2D),
   baseLineWidth(opt->baseLineWidth),
   basename("default"), filename("default"), timestamped(false),
-  eTot12(NULL), ePrompt12(NULL), time12(NULL), time34(NULL),
+  // eTot12(NULL), ePrompt12(NULL), time12(NULL), time34(NULL),
   timeLastSave(0),  rate(NULL),
   drs(_drs), fifo(new DRS4_fifo), writer(NULL),
   rawWave(NULL), event(NULL),
   headers(NULL), nEvtMax(opt->nEvtMax), iEvtSerial(0), iEvtProcessed(0), file(NULL),
-  f_stop(false), f_stopWhenEmpty(false), f_running(false),
-  timePoints(NULL), amplitudes(NULL),
-  itRed(0), itRed2D(0)
+#ifdef ROOT_OUTPUT
+  outTree(NULL), h4daqEvent(NULL),
+#endif
+  f_stop(false), f_stopWhenEmpty(false), f_running(false)
+  // timePoints(NULL), amplitudes(NULL)
+  // itRed(0), itRed2D(0)
 {
 
-  Observables obs;
-  for(int iobs=0; iobs<nObservables; iobs++) {
-    kObservables kobs = static_cast<kObservables>(iobs);
-    histo[0][iobs] = new TH1F(Form("h1%d", iobs), Form("%s - S1; %s_{1} (%s)", obs.Title(kobs), obs.Title(kobs), obs.Unit(kobs)), opt->histoNbins[iobs], opt->histolo[iobs], opt->histohi[iobs]);
-    histo[1][iobs] = new TH1F(Form("h2%d", iobs), Form("%s - S2; %s_{2} (%s)", obs.Title(kobs), obs.Title(kobs), obs.Unit(kobs)), opt->histoNbins[iobs], opt->histolo[iobs], opt->histohi[iobs]);
-  }
+  // Observables obs;
+  // for(int iobs=0; iobs<nObservables; iobs++) {
+  //   kObservables kobs = static_cast<kObservables>(iobs);
+  //   histo[0][iobs] = new TH1F(Form("h1%d", iobs), Form("%s - S1; %s_{1} (%s)", obs.Title(kobs), obs.Title(kobs), obs.Unit(kobs)), opt->histoNbins[iobs], opt->histolo[iobs], opt->histohi[iobs]);
+  //   histo[1][iobs] = new TH1F(Form("h2%d", iobs), Form("%s - S2; %s_{2} (%s)", obs.Title(kobs), obs.Title(kobs), obs.Unit(kobs)), opt->histoNbins[iobs], opt->histolo[iobs], opt->histohi[iobs]);
+  // }
 
-  eTot12 = new TH2F("eTot12", Form("eTot2 vs. eTot1; %s_{1} (%s); %s_{2} (%s)", obs.Title(eTot), obs.Unit(eTot), obs.Title(eTot), obs.Unit(eTot)),
-      opt->histoNbins[eTot]/opt->_xRed, opt->histolo[eTot], opt->histohi[eTot],
-      opt->histoNbins[eTot]/opt->_xRed, opt->histolo[eTot], opt->histohi[eTot]);
-  ePrompt12 = new TH2F("ePrompt12", Form("ePrompt2 vs. ePrompt1; %s_{1} (%s); %s_{2} (%s)", obs.Title(ePrompt), obs.Unit(ePrompt), obs.Title(ePrompt), obs.Unit(ePrompt)),
-      opt->histoNbins[ePrompt]/opt->_xRed, opt->histolo[ePrompt], opt->histohi[ePrompt],
-      opt->histoNbins[ePrompt]/opt->_xRed, opt->histolo[ePrompt], opt->histohi[ePrompt]);
-  time12 = new TH2F("time12", Form("t_{2} vs. t_{1}; %s_{1} (%s); %s_{2} (%s)", obs.Title(arrivalTime), obs.Unit(arrivalTime), obs.Title(arrivalTime), obs.Unit(arrivalTime)),
-      opt->histoNbins[arrivalTime]/opt->_xRed, opt->histolo[arrivalTime], opt->histohi[arrivalTime],
-      opt->histoNbins[arrivalTime]/opt->_xRed, opt->histolo[arrivalTime], opt->histohi[arrivalTime]);
-  time34 = new TH2F("time34", "t_{4} vs. t_{3}; t_{3} (ns); t_{4} (ns)", 100, 0., 100., 100, 0., 100.);
+  // eTot12 = new TH2F("eTot12", Form("eTot2 vs. eTot1; %s_{1} (%s); %s_{2} (%s)", obs.Title(eTot), obs.Unit(eTot), obs.Title(eTot), obs.Unit(eTot)),
+  //     opt->histoNbins[eTot]/opt->_xRed, opt->histolo[eTot], opt->histohi[eTot],
+  //     opt->histoNbins[eTot]/opt->_xRed, opt->histolo[eTot], opt->histohi[eTot]);
+  // ePrompt12 = new TH2F("ePrompt12", Form("ePrompt2 vs. ePrompt1; %s_{1} (%s); %s_{2} (%s)", obs.Title(ePrompt), obs.Unit(ePrompt), obs.Title(ePrompt), obs.Unit(ePrompt)),
+  //     opt->histoNbins[ePrompt]/opt->_xRed, opt->histolo[ePrompt], opt->histohi[ePrompt],
+  //     opt->histoNbins[ePrompt]/opt->_xRed, opt->histolo[ePrompt], opt->histohi[ePrompt]);
+  // time12 = new TH2F("time12", Form("t_{2} vs. t_{1}; %s_{1} (%s); %s_{2} (%s)", obs.Title(arrivalTime), obs.Unit(arrivalTime), obs.Title(arrivalTime), obs.Unit(arrivalTime)),
+  //     opt->histoNbins[arrivalTime]/opt->_xRed, opt->histolo[arrivalTime], opt->histohi[arrivalTime],
+  //     opt->histoNbins[arrivalTime]/opt->_xRed, opt->histolo[arrivalTime], opt->histohi[arrivalTime]);
+  // time34 = new TH2F("time34", "t_{4} vs. t_{3}; t_{3} (ns); t_{4} (ns)", 100, 0., 100., 100, 0., 100.);
 
 
   if( gApplication->Argc() > 1 ) basename = gApplication->Argv()[1];
   std::cout << "basename = " << basename << "\n";
 
   // Placement of histograms
-  unsigned ny = int(sqrt(float(nObservables)));
-  unsigned nx = int(ceil(nObservables / ny));
-  fCanvas01->Divide(nx, ny, .002, .002);
-  fCanvas02->Divide(nx, ny, .002, .002);
-  for( unsigned ih=0; ih<nObservables; ih++) {
-    fCanvas01->cd(ih+1); histo[0][ih]->Draw();
-    fCanvas02->cd(ih+1); histo[1][ih]->Draw();
-  }
+  // unsigned ny = int(sqrt(float(nObservables)));
+  // unsigned nx = int(ceil(nObservables / ny));
+  // fCanvas01->Divide(nx, ny, .002, .002);
+  // fCanvas02->Divide(nx, ny, .002, .002);
+  // for( unsigned ih=0; ih<nObservables; ih++) {
+  //   fCanvas01->cd(ih+1); histo[0][ih]->Draw();
+  //   fCanvas02->cd(ih+1); histo[1][ih]->Draw();
+  // }
 
-  fCanvas2D->Divide(2, 2, .002, .002);
-  fCanvas2D->cd(1); eTot12->Draw("colz");
-  fCanvas2D->cd(2); ePrompt12->Draw("colz");
-  fCanvas2D->cd(3); time12->Draw("colz");
-  fCanvas2D->cd(4); time34->Draw("colz");
-  eTot12->SetStats(0);
-  ePrompt12->SetStats(0);
-  time12->SetStats(0);
-  time34->SetStats(0);
+  // fCanvas2D->Divide(2, 2, .002, .002);
+  // fCanvas2D->cd(1); eTot12->Draw("colz");
+  // fCanvas2D->cd(2); ePrompt12->Draw("colz");
+  // fCanvas2D->cd(3); time12->Draw("colz");
+  // fCanvas2D->cd(4); time34->Draw("colz");
+  // eTot12->SetStats(0);
+  // ePrompt12->SetStats(0);
+  // time12->SetStats(0);
+  // time34->SetStats(0);
 
-  fCanvasOsc->cd();
-  fCanvasOsc->GetListOfPrimitives()->SetOwner();
-  fCanvasOsc->SetTickx();
-  fCanvasOsc->SetTicky();
-  TH1F *oscFrame = new TH1F("OscFrame", "Oscillograms; t (ns); A (mV)", 10, 0., 200.);
-  oscFrame->SetBit(kCanDelete, false);
-  oscFrame->SetMinimum(-550);
-  oscFrame->SetMaximum( 50);
-  oscFrame->SetStats(false);
-  oscFrame->Draw();
-  oscFrame=NULL;
-  TLegend * oscLeg = new TLegend(.68, .45, .88, .6);
-  oscLeg->SetBorderSize(0);
-  oscLeg->SetFillStyle(4001);
-  oscLeg->SetTextFont(42);
-  oscLeg->SetTextSize(.05);
-  TLegendEntry *leS1 = oscLeg->AddEntry("S1", " S1", "l");
-  leS1->SetLineColor(kBlue);
-  leS1->SetLineWidth(2);
-  TLegendEntry *leS2 = oscLeg->AddEntry("S2", " S2", "l");
-  leS2->SetLineColor(kRed);
-  leS2->SetLineWidth(2);
-  oscLeg->Draw();
+  // fCanvasOsc->cd();
+  // fCanvasOsc->GetListOfPrimitives()->SetOwner();
+  // fCanvasOsc->SetTickx();
+  // fCanvasOsc->SetTicky();
+  // TH1F *oscFrame = new TH1F("OscFrame", "Oscillograms; t (ns); A (mV)", 10, 0., 200.);
+  // oscFrame->SetBit(kCanDelete, false);
+  // oscFrame->SetMinimum(-550);
+  // oscFrame->SetMaximum( 50);
+  // oscFrame->SetStats(false);
+  // oscFrame->Draw();
+  // oscFrame=NULL;
+  // TLegend * oscLeg = new TLegend(.68, .45, .88, .6);
+  // oscLeg->SetBorderSize(0);
+  // oscLeg->SetFillStyle(4001);
+  // oscLeg->SetTextFont(42);
+  // oscLeg->SetTextSize(.05);
+  // TLegendEntry *leS1 = oscLeg->AddEntry("S1", " S1", "l");
+  // leS1->SetLineColor(kBlue);
+  // leS1->SetLineWidth(2);
+  // TLegendEntry *leS2 = oscLeg->AddEntry("S2", " S2", "l");
+  // leS2->SetLineColor(kRed);
+  // leS2->SetLineWidth(2);
+  // oscLeg->Draw();
 
 
 // Create a horizontal frame widget with buttons
@@ -136,7 +141,7 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
   //  kFontWeightNormal,  kFontSlantRoman are defined in TGFont.h
   TGFont *font = pool->GetFont("helvetica", 14,  kFontWeightBold,  kFontSlantOblique);
 //  TGFont *font = pool->GetFont("-adobe-helvetica-bold-r-normal-*-15-*-*-*-*-*-iso8859-1");
-  font->Print();
+//  font->Print();
   FontStruct_t ft = font->GetFontStruct();
 
   TGTextButton *start = new TGTextButton(hframe,"&Start");
@@ -220,6 +225,19 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
 
   AddFrame(hframeB, new TGLayoutHints(kLHintsCenterX | kLHintsTop | kLHintsExpandY,2,2,2,2));
 
+  TGHorizontalFrame *hframeP = new TGHorizontalFrame(this,250,60);
+
+  fHProg2 = new TGHProgressBar(hframeP, TGProgressBar::kFancy, 100);
+  fHProg2->SetBarColor("lightblue");
+  fHProg2->ShowPosition(kTRUE, kFALSE, "%.0f events");
+
+  fHProg2->SetRange(0,nEvtMax);
+  fHProg2->Reset();
+  hframeP->AddFrame(fHProg2, new TGLayoutHints(kLHintsTop | kLHintsCenterX | kLHintsExpandX, 1,1,1,1));
+
+  
+  AddFrame(hframeP, new TGLayoutHints(kLHintsCenterX | kLHintsTop | kLHintsExpandX,2,2,2,2));
+
   std::cout << "Added labels.\n";
 
 // Set a name to the main frame
@@ -233,6 +251,10 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
 
   std::cout << "Constructed main window.\n";
 
+#ifdef ROOT_OUTPUT
+   outTree = new TTree ("H4tree", "H4 testbeam tree") ;
+   h4daqEvent = new H4DAQ::Event(outTree) ;
+#endif
 }
 
 
@@ -241,26 +263,26 @@ MonitorFrame::~MonitorFrame() {
 
   std::cout << "Cleanup main frame.\n";
 
-  for(int iobs=0; iobs<nObservables; iobs++) {
-    delete histo[0][iobs];
-    histo[0][iobs] = NULL;
-    delete histo[1][iobs];
-    histo[1][iobs] = NULL;
-  }
+  // for(int iobs=0; iobs<nObservables; iobs++) {
+  //   delete histo[0][iobs];
+  //   histo[0][iobs] = NULL;
+  //   delete histo[1][iobs];
+  //   histo[1][iobs] = NULL;
+  // }
 
-  delete eTot12;      eTot12 = NULL;
-  delete ePrompt12;   ePrompt12 = NULL;
-  delete time12;      time12 = NULL;
-  delete time34;      time34 = NULL;
+  // delete eTot12;      eTot12 = NULL;
+  // delete ePrompt12;   ePrompt12 = NULL;
+  // delete time12;      time12 = NULL;
+  // delete time34;      time34 = NULL;
 
-  if (fCanvas01) delete fCanvas01; fCanvas01 = NULL;
-  if (frCanvas01) delete frCanvas01;
-  if (fCanvas02) delete fCanvas02;
-  if (frCanvas02) delete frCanvas02;
-  if (fCanvas2D) delete fCanvas2D;
-  if (frCanvas2D) delete frCanvas2D;
-  if (fCanvasOsc) delete fCanvasOsc;
-  if (frCanvasOsc) delete frCanvasOsc;
+  // if (fCanvas01) delete fCanvas01; fCanvas01 = NULL;
+  // if (frCanvas01) delete frCanvas01;
+  // if (fCanvas02) delete fCanvas02;
+  // if (frCanvas02) delete frCanvas02;
+  // if (fCanvas2D) delete fCanvas2D;
+  // if (frCanvas2D) delete frCanvas2D;
+  // if (fCanvasOsc) delete fCanvasOsc;
+  // if (frCanvasOsc) delete frCanvasOsc;
 
 
   if (writer)    { delete writer;    writer    = NULL; }
@@ -306,7 +328,7 @@ void MonitorFrame::Start() {
     return;
   }
 
-
+  
   if(writer) {
     if (writer->isRunning() || writer->isJoinable()) {
       std::cout << "WARNING: Attempt to start while writer is running.!" << std::endl;
@@ -322,16 +344,16 @@ void MonitorFrame::Start() {
   temperatureT->SetText(Form("%.1f\xB0", writer->Temperature()));
 
   /*** Clear histograms ***/
-  for(int iobs=0; iobs<nObservables; iobs++) {
-    histo[0][iobs]->Reset();
-    histo[1][iobs]->Reset();
-  }
-  eTot12->Reset();
-  ePrompt12->Reset();
-  time12->Reset();
-  time34->Reset();
+  // for(int iobs=0; iobs<nObservables; iobs++) {
+  //   histo[0][iobs]->Reset();
+  //   histo[1][iobs]->Reset();
+  // }
+  // eTot12->Reset();
+  // ePrompt12->Reset();
+  // time12->Reset();
+  // time34->Reset();
 
-
+  fHProg2->Reset();
 
   timer.Start();
   timeLastSave = 0;
@@ -346,6 +368,8 @@ void MonitorFrame::Start() {
     return;
   }
 
+
+
   rate = new MonitorFrame::RateEstimator();
   rate->Push(0, 1.e-9); // One false time value to avoid division by zero
   DoDraw(true);
@@ -354,10 +378,12 @@ void MonitorFrame::Start() {
   writer->start(nEvtMax);
   while (!writer->isRunning()) { std::this_thread::sleep_for(std::chrono::milliseconds(10)); };
 
+  
   /*** Start monitor ***/
   Run();
 
   /*** Cleanup after the run finishes ***/
+#ifndef ROOT_OUTPUT
   if (file) {
     if (file->is_open()) {
       file->close();
@@ -365,12 +391,28 @@ void MonitorFrame::Start() {
     delete file;
     file = NULL;
   }
+#else
+  if (file) {
+    if (file->IsOpen()) {
+      file->cd() ;
+      outTree->Write ("",TObject::kOverwrite) ;
+      file->Close();
+      outTree->Reset();
+    }
+    delete file;
+    file = NULL;
+  }
+#endif
   f_running = false;
 
   if (rate)      { delete rate;      rate      = NULL; }
   if (headers)   { delete headers;   headers   = NULL; }
   if (writer)    { delete writer;    writer    = NULL; }
 
+#ifdef ROOT_OUTPUT
+  if (outTree) { delete outTree;  outTree = NULL; }
+  if (h4daqEvent)   { delete h4daqEvent;    event = NULL; }
+#endif
 }
 
 
@@ -401,13 +443,13 @@ int MonitorFrame::Run() {
       iEvtSerial = rawWave->header.getEventNumber();
       iEvtLocal++;
       if (iEvtLocal%10000 == 0) {
-        StartNewFile();
+        StartNewFile(); //a new spill in H4DAQ language
       }
- //     std::cout << "Read event #" << iEvtSerial << std::endl;
- //     std::cout << "Trigger cell is " << rawWave->header.getTriggerCell() << std::endl;
+      //std::cout << "Read event #" << iEvtSerial << std::endl;
+      //      std::cout << "Trigger cell is " << rawWave->header.getTriggerCell() << std::endl;
       event = new DRS4_data::Event(iEvtSerial, rawWave->header, drs);
 
-      Observables *obs[2] = {NULL, NULL};
+      // Observables *obs[2] = {NULL, NULL};
 
       int16_t wf[4][kNumberOfBins];
 
@@ -426,19 +468,19 @@ int MonitorFrame::Run() {
 
         for (unsigned char ichan=0 ; ichan<4 ; ichan++) {
 
-          float timebins[kNumberOfBins];
-          b->GetTime(0, ichan*2, int(rawWave->header.getTriggerCell()), timebins, tCalibrated, tRotated);
+          // float timebins[kNumberOfBins];
+          // b->GetTime(0, ichan*2, int(rawWave->header.getTriggerCell()), timebins, tCalibrated, tRotated);
 
-          float amplitude[kNumberOfBins];
+          // float amplitude[kNumberOfBins];
           for (unsigned ibin=0; ibin<kNumberOfBins; ibin++) {
-            amplitude[ibin] = static_cast<float>(wf[ichan][ibin]) / 10;
+            // amplitude[ibin] = static_cast<float>(wf[ichan][ibin]) / 10;
             event->getChData(iboard, ichan)->data[ibin] = wf[ichan][ibin] ;
           }
 
-          if (ichan<2 && iboard==0) {
-            obs[ichan] = WaveProcessor::ProcessOnline(timebins, amplitude, kNumberOfBins, 4., baseLineWidth);
-            obs[ichan]->hist->SetName(Form("Oscillogram_ch%d", ichan+1));
-          }
+          // if (ichan<2 && iboard==0) {
+          //   obs[ichan] = WaveProcessor::ProcessOnline(timebins, amplitude, kNumberOfBins, 4., baseLineWidth);
+          //   obs[ichan]->hist->SetName(Form("Oscillogram_ch%d", ichan+1));
+          // }
 
         } // Loop over the channels
       } // Loop over the boards
@@ -446,20 +488,27 @@ int MonitorFrame::Run() {
       iEvtProcessed++;
 
 
-      FillHistos(obs);
-      if(obs[0]) {
-        delete obs[0]; obs[0] = NULL;
-      }
-      if(obs[1]) {
-        delete obs[1]; obs[1] = NULL;
-      }
-
+      // FillHistos(obs);
+      // if(obs[0]) {
+      //   delete obs[0]; obs[0] = NULL;
+      // }
+      // if(obs[1]) {
+      //   delete obs[1]; obs[1] = NULL;
+      // }
+#ifndef ROOT_OUTPUT
       event->write(file);
+#else
+      //Fill H4DAQ event structure
+      h4daqEvent->clear();
+      fillH4Event(headers,event,h4daqEvent);
+      h4daqEvent->Fill();
+      // std::cout << "Filled event " << h4daqEvent->id.evtNumber << std::endl;
+#endif
       delete event; event = NULL;
       delete rawWave; rawWave = NULL;
-      if(iEvtProcessed%500 == 0) {
-        std::cout << "Processed event #" << iEvtProcessed << std::endl;
-      }
+      // if(iEvtProcessed%500 == 0) {
+      // std::cout << "Processed event #" << iEvtProcessed << std::endl;
+      // }
     } // If rawWave (fifo not empty)
     else {
       if( f_stopWhenEmpty ) {
@@ -475,7 +524,10 @@ int MonitorFrame::Run() {
     if (!writer->isRunning()) {
       f_stopWhenEmpty = true;
     }
-
+    
+    if ( int(timer.RealTime()*100) % 20 == 0 )
+      DoDraw(true);
+    timer.Continue();
   } // !f_stop
 
   DoDraw(true);
@@ -535,80 +587,77 @@ void MonitorFrame::RefreshT() {
 void MonitorFrame::FillHistos(Observables *obs[2])
 {
 
-  for(unsigned ichan=0; ichan<2; ichan++) {
-    for(int iobs=0; iobs<nObservables; iobs++) {
-      histo[ichan][iobs]->Fill(obs[ichan]->Value(static_cast<kObservables>(iobs)));
-    }
-  }
+ //  for(unsigned ichan=0; ichan<2; ichan++) {
+ //    for(int iobs=0; iobs<nObservables; iobs++) {
+ //      histo[ichan][iobs]->Fill(obs[ichan]->Value(static_cast<kObservables>(iobs)));
+ //    }
+ //  }
 
-  eTot12->Fill(obs[0]->Value(eTot), obs[1]->Value(eTot));
-  ePrompt12->Fill(obs[0]->Value(ePrompt), obs[1]->Value(ePrompt));
-  time12->Fill(obs[0]->Value(arrivalTime), obs[1]->Value(arrivalTime));
+ //  eTot12->Fill(obs[0]->Value(eTot), obs[1]->Value(eTot));
+ //  ePrompt12->Fill(obs[0]->Value(ePrompt), obs[1]->Value(ePrompt));
+ //  time12->Fill(obs[0]->Value(arrivalTime), obs[1]->Value(arrivalTime));
 
-  // TODO: calculate and process t3 and t4
+ //  // TODO: calculate and process t3 and t4
 
-  itRed++; itRed2D++;
-  if (itRed >= tRed) {
+ //  itRed++; itRed2D++;
+ //  if (itRed >= tRed) {
 
-    itRed=0;
-    bool draw2D = false;
-    if(itRed2D >= tRed2D) {
-      itRed2D=0;
-      itRed=0;
-      draw2D = true;
-    }
-    DoDraw(draw2D);
+ //    itRed=0;
+ //    bool draw2D = false;
+ //    if(itRed2D >= tRed2D) {
+ //      itRed2D=0;
+ //      itRed=0;
+ //      draw2D = true;
+ //    }
+ //    DoDraw(draw2D);
 
-    fCanvasOsc->cd();
-    // Remove previous oscillograms
-    TList *listp = gPad->GetListOfPrimitives();
-    TObject *last = listp->Last();
-    if (last->IsA() == obs[0]->hist->IsA()) {
-      listp->RemoveLast();
-      delete dynamic_cast<TH1F*>(last);
-      last = listp->Last();
-      if (last->IsA() == obs[0]->hist->IsA()) {
-        listp->RemoveLast();
-        delete dynamic_cast<TH1F*>(last);
-      }
-    }
+ //    fCanvasOsc->cd();
+ //    // Remove previous oscillograms
+ //    TList *listp = gPad->GetListOfPrimitives();
+ //    TObject *last = listp->Last();
+ //    if (last->IsA() == obs[0]->hist->IsA()) {
+ //      listp->RemoveLast();
+ //      delete dynamic_cast<TH1F*>(last);
+ //      last = listp->Last();
+ //      if (last->IsA() == obs[0]->hist->IsA()) {
+ //        listp->RemoveLast();
+ //        delete dynamic_cast<TH1F*>(last);
+ //      }
+ //    }
 
- //   obs[0]->hist->Rebin(3);
-    obs[0]->hist->SetLineColor(kBlue);
-    obs[0]->hist->Scale(-1);
-    obs[0]->hist->DrawCopy("same hist l")->SetBit(kCanDelete);
+ // //   obs[0]->hist->Rebin(3);
+ //    obs[0]->hist->SetLineColor(kBlue);
+ //    obs[0]->hist->Scale(-1);
+ //    obs[0]->hist->DrawCopy("same hist l")->SetBit(kCanDelete);
 
- //   obs[1]->hist->Rebin(3);
-    obs[1]->hist->SetLineColor(kRed);
-    obs[1]->hist->Scale(-1);
-    obs[1]->hist->DrawCopy("same hist l")->SetBit(kCanDelete);
+ // //   obs[1]->hist->Rebin(3);
+ //    obs[1]->hist->SetLineColor(kRed);
+ //    obs[1]->hist->Scale(-1);
+ //    obs[1]->hist->DrawCopy("same hist l")->SetBit(kCanDelete);
 
-    fCanvasOsc->Update();
-  }
+ //    fCanvasOsc->Update();
+ //  }
 
 } // FillHistos()
-
-
-
-
 
 void MonitorFrame::DoDraw(bool all) {
 // Draws function graphics in randomly chosen interval
 
-  fCanvas01->Paint();
-  fCanvas02->Paint();
-  fCanvas01->Update();
-  fCanvas02->Update();
-  if(all) {
-    fCanvas2D->Paint();
-    fCanvas2D->Update();
-  }
+  // fCanvas01->Paint();
+  // fCanvas02->Paint();
+  // fCanvas01->Update();
+  // fCanvas02->Update();
+  // if(all) {
+  //   fCanvas2D->Paint();
+  //   fCanvas2D->Update();
+  // }
 
 
   unsigned nAcq = writer->NEvents();
   unsigned timeLast = fifo->timeLastEvent();
   nEvtAcqT->SetText(Form("%-10i", nAcq));
   nEvtProT->SetText(Form("%-10i", iEvtProcessed));
+  fHProg2->SetPosition(iEvtProcessed);
   rate->Push(nAcq, static_cast<double>(timeLast)/1000);
   rateT->SetText(Form("%5.3g evt/s", rate->Get()));
   temperatureT->SetText(Form("%.1f\xB0", writer->Temperature()));
@@ -641,27 +690,27 @@ void MonitorFrame::Save() {
     filename += ts.GetTime(0);
   }
 
-  TString rootfilename(filename); rootfilename += ".root";
+//   TString rootfilename(filename); rootfilename += ".root";
 
-  TFile output(rootfilename.Data(), "RECREATE");
-  if(!(output.IsOpen())) {
-    std::cout << "\nCannot open output root file " << rootfilename.Data() << ".\n";
-//      gApplication->Terminate(0);
-  }
+//   TFile output(rootfilename.Data(), "RECREATE");
+//   if(!(output.IsOpen())) {
+//     std::cout << "\nCannot open output root file " << rootfilename.Data() << ".\n";
+// //      gApplication->Terminate(0);
+//   }
 
-  for(int iobs=0; iobs<nObservables; iobs++) {
-    histo[0][iobs]->Clone()->Write();
-    histo[1][iobs]->Clone()->Write();
-  }
+//   for(int iobs=0; iobs<nObservables; iobs++) {
+//     histo[0][iobs]->Clone()->Write();
+//     histo[1][iobs]->Clone()->Write();
+//   }
 
-  eTot12->Clone()->Write();
-  ePrompt12->Clone()->Write();
-  time12->Clone()->Write();
-  time34->Clone()->Write();
+//   eTot12->Clone()->Write();
+//   ePrompt12->Clone()->Write();
+//   time12->Clone()->Write();
+//   time34->Clone()->Write();
 
-  output.Close();
-  std::cout << "\nSaved data in " << rootfilename.Data() << "\n";
-  timeLastSave = timer.RealTime();
+//   output.Close();
+//   std::cout << "\nSaved data in " << rootfilename.Data() << "\n";
+//   timeLastSave = timer.RealTime();
   timer.Continue();
 }
 
@@ -719,10 +768,17 @@ void MonitorFrame::RateEstimator::Push(int count, double time) {
   }
 }
 
-
-
 int MonitorFrame::StartNewFile() {
 
+  TTimeStamp ts(std::time(NULL), 0);
+  filename = options->outDir+ "/";
+  filename += "test";
+  filename += "_";
+  filename += ts.GetDate(0);
+  filename += "-";
+  filename += ts.GetTime(0);
+
+#ifndef ROOT_OUTPUT
   if (file) {
     if (file->is_open()) {
       file->close();
@@ -732,16 +788,9 @@ int MonitorFrame::StartNewFile() {
     file = new std::ofstream();
   }
 
-
-  filename = basename;
-  TTimeStamp ts(std::time(NULL), 0);
-  filename = basename;
-  filename += "_";
-  filename += ts.GetDate(0);
-  filename += "-";
-  filename += ts.GetTime(0);
   filename += ".dat";
 
+  std::cout << "Opening output file " << filename << std::endl;
   file->open(filename, std::ios_base::binary & std::ios_base::trunc) ;
 
   if( file->fail() ) {
@@ -755,6 +804,27 @@ int MonitorFrame::StartNewFile() {
     headers = DRS4_data::DRSHeaders::MakeDRSHeaders(drs);
   }
   headers->write(file);
+#else
+  if (file) {
+    if (file->IsOpen()) {
+      file->cd () ;
+      outTree->Write ("",TObject::kOverwrite) ;
+      file->Close();
+      outTree->Reset();
+    }
+  }
+
+  filename += ".root";
+
+  std::cout << "Opening output file " << filename << std::endl;
+
+  file = TFile::Open(filename, "RECREATE") ;
+  if (!file->IsOpen()) 
+    {
+      std::cout << "ERROR: Cannot open file " << filename << " for writing.\n";
+      return -1;
+    }  
+#endif
 
   return 0;
 }

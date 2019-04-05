@@ -72,7 +72,7 @@ namespace DRS4_data {
 
     void Discard();
 
-    static const unsigned maxSize = 10000;
+    static const unsigned maxSize = 1000;
 
   private:
     std::queue<RawEvent*> eventQueue;

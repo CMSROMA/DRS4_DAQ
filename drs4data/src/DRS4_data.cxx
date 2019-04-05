@@ -210,10 +210,56 @@ namespace DRS4_data {
     return 0;
   }
 
+  int fillH4Event(DRSHeaders* headers, Event* event, H4DAQ::Event *h4event) 
+  {
+    if(!headers ||
+       !event  ||
+       !h4event ) return -1;
+
+    // std::cout << "Filling event  " << header.getEventNumber() << std::endl;
+    //fill h4daq format
+    h4event->id.runNumber = 1;
+    h4event->id.spillNumber = 1;
+    h4event->id.evtNumber = event->getEventHeader().getEventNumber();
+
+    //fill event time
+    H4DAQ::timeData td; td.board=1;
+    td.time=event->getEventHeader().getHour()*3600000+event->getEventHeader().getMinute()*60000+event->getEventHeader().getSecond()*1000+event->getEventHeader().getMillisecond();
+    h4event->evtTimes.push_back(td);
+
+    for(unsigned iboard=0; iboard<event->getNBoards(); iboard++) 
+      {
+    	int tcell=event->getTriggerCells()[iboard]->trigger_cell;
+
+    	for(unsigned ich=0; ich<event->getNChans(iboard); ich++) 
+    	  {
+    	    const ChannelTimes* chTimes=headers->ChTimes();
+    	    const ChannelData* chData=event->getChData(iboard,ich);
+    	    float t = 0;
+    	    for (int isample=0 ; isample<kNumberOfBins ; isample++) {
+
+    	      //get calibrated time (in ns)
+    	      if (isample>0)
+    		t += chTimes->at(iboard).at(ich)->tbins[(tcell+isample-1) % kNumberOfBins];
+
+    	      H4DAQ::digiData aDigiSample ;
+    	      aDigiSample.board = iboard;
+    	      aDigiSample.channel = ich;
+    	      aDigiSample.group = 0;
+    	      aDigiSample.frequency = round(1./chTimes->at(iboard).at(0)->tbins[0]) ;
+    	      aDigiSample.startIndexCell = tcell;
+    	      aDigiSample.sampleIndex = isample;
+    	      aDigiSample.sampleTime = t;
+    	      aDigiSample.sampleRaw = 0xFFFF; //put dummy value
+    	      aDigiSample.sampleValue = float(chData->data[isample])/10.;
+    	      h4event->digiValues.push_back (aDigiSample) ;
+    	    }
+    	  }
+      }
+  }
 
 
   /*** Class BoardHeaders ***/
-
   DRSHeaders::DRSHeaders(DRSHeaders& _headers) :
     fheader(_headers.fheader), bheaders(_headers.bheaders), chTimes(_headers.chTimes)
   {

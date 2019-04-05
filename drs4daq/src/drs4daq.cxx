@@ -137,9 +137,11 @@ int main(int argc, char* argv[]) {
 
 
   /*** Monitor frame ***/
+
   std::cout << "Constructing frame." << std::endl;
   MonitorFrame frame(gClient->GetRoot(), &options, drs);
 
+  std::cout << "Start DAQ" << std::endl;
   app->Run();
  // std::cout << "Finished! Press enter to close.\n";
  // std::cin.ignore();

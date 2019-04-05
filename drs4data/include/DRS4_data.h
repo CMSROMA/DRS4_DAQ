@@ -15,6 +15,7 @@
 #include "stdint.h"
 
 #include "DRS.h"
+#include "Event.h"
 
 namespace DRS4_data {
 
@@ -171,6 +172,9 @@ namespace DRS4_data {
       return chData.at(iboard).size();
     }
 
+    EHEADER  getEventHeader() const { return header; }
+    std::vector<BHEADER*>  getBoardHeaders() const { return bheaders; }
+    std::vector<TCHEADER*>  getTriggerCells() const { return tcells; }
     unsigned getEvtNumber() const { return header.getEventNumber(); }
 
     int write(std::ofstream *) const ;
@@ -216,6 +220,7 @@ namespace DRS4_data {
 
   void RemoveSpikes(short wf[4][kNumberOfBins], short threshold, short spikeWidth);
 
+  int fillH4Event(DRSHeaders* headers, Event* event, H4DAQ::Event *h4event); 
 } // namespace DRS4_data
 
 
