@@ -28,6 +28,7 @@
 
 class TGLabel;
 class TGHProgressBar;
+class TGTextEntry;
 class TCanvas;
 class TRootCanvas;
 class TH1F;
@@ -86,9 +87,8 @@ protected:
   TGLabel *nEvtProT;
   TGLabel *rateT;
   TGLabel *temperatureT;
-  TGLabel *filenameT;
-  TGLabel *configT;
   TGHProgressBar    *fHProg2;
+  TGTextEntry* nEvtMaxT;
 
   /* TCanvas *fCanvas01; */
   /* TRootCanvas *frCanvas01; */

@@ -10,6 +10,8 @@
 #include "TGButton.h"
 #include "TGTextView.h"
 #include "TGText.h"
+#include "TGTextEntry.h"
+#include "TGTextBuffer.h"
 #include "TGLabel.h"
 #include "TGProgressBar.h"
 #include "TCanvas.h"
@@ -39,7 +41,7 @@ using namespace DRS4_data;
 
 
 MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _drs) :
-  TGMainFrame(p, 250, 300),
+  TGMainFrame(p, 250, 350),
   // limits(opt->histolo, opt->histohi),
   options(opt),
   // fCanvas01(new TCanvas("DRS4Canvas01", "DRS4 Monitor 01", opt->_w, opt->_h)),
@@ -132,10 +134,6 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
   // leS2->SetLineWidth(2);
   // oscLeg->Draw();
 
-
-// Create a horizontal frame widget with buttons
-  TGHorizontalFrame *hframe = new TGHorizontalFrame(this,250,60);
-
   TGFontPool *pool = gClient->GetFontPool();
   // family , size (minus value - in pixels, positive value - in points), weight, slant
   //  kFontWeightNormal,  kFontSlantRoman are defined in TGFont.h
@@ -143,6 +141,22 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
 //  TGFont *font = pool->GetFont("-adobe-helvetica-bold-r-normal-*-15-*-*-*-*-*-iso8859-1");
 //  font->Print();
   FontStruct_t ft = font->GetFontStruct();
+
+
+  TGHorizontalFrame *hframeI = new TGHorizontalFrame(this,250,60);
+
+  TGLabel *nEvtMaxL = new TGLabel(hframeI, "Nevt: ");
+  nEvtMaxL->SetTextFont(ft);
+  hframeI->AddFrame(nEvtMaxL, new TGLayoutHints(kLHintsCenterX,5,1,3,4));
+  
+  nEvtMaxT = new TGTextEntry(hframeI, new TGTextBuffer(100));
+  nEvtMaxT->SetText(Form("%d",nEvtMax));
+  hframeI->AddFrame(nEvtMaxT, new TGLayoutHints(kLHintsCenterX,1,5,3,4));
+
+  AddFrame(hframeI, new TGLayoutHints(kLHintsCenterX | kLHintsTop | kLHintsExpandY,2,2,2,2));  
+// Create a horizontal frame widget with buttons
+  TGHorizontalFrame *hframe = new TGHorizontalFrame(this,250,60);
+
 
   TGTextButton *start = new TGTextButton(hframe,"&Start");
   start->Connect("Clicked()","MonitorFrame", this, "Start()");
@@ -206,7 +220,6 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
 
   AddFrame(hframeT, new TGLayoutHints(kLHintsCenterX | kLHintsTop | kLHintsExpandY,2,2,2,2));
 
-
   // Create a horizontal frame widget with displays of board status
   TGHorizontalFrame *hframeB = new TGHorizontalFrame(this,250,60);
 
@@ -234,7 +247,6 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
   fHProg2->SetRange(0,nEvtMax);
   fHProg2->Reset();
   hframeP->AddFrame(fHProg2, new TGLayoutHints(kLHintsTop | kLHintsCenterX | kLHintsExpandX, 1,1,1,1));
-
   
   AddFrame(hframeP, new TGLayoutHints(kLHintsCenterX | kLHintsTop | kLHintsExpandX,2,2,2,2));
 
@@ -318,6 +330,7 @@ void MonitorFrame::Start() {
 
   std::cout << "Starting Monitor frame.\n";
 
+  nEvtMaxT->SetEnabled(false);
   if(!drs) {
     std::cout << "MonitorFrame::Start() - ERROR: DRS object empty." << std::endl;
     return;
@@ -375,6 +388,8 @@ void MonitorFrame::Start() {
   DoDraw(true);
 
   /*** Start writer ***/
+  nEvtMax=TString(nEvtMaxT->GetText()).Atoi();
+  fHProg2->SetRange(0,nEvtMax);
   writer->start(nEvtMax);
   while (!writer->isRunning()) { std::this_thread::sleep_for(std::chrono::milliseconds(10)); };
 
@@ -532,6 +547,8 @@ int MonitorFrame::Run() {
 
   DoDraw(true);
 
+  nEvtMaxT->SetEnabled(true);
+
   std::cout << "Events processed: " << iEvtProcessed << "\n";
   std::cout << Form("Elapsed time: %6.2f s.\n", timer.RealTime());
   std::cout << Form("Event rate: %6.2f events/s \n", float(iEvtProcessed)/timer.RealTime());
@@ -551,6 +568,9 @@ void MonitorFrame::Stop() {
   writer->stop();
 
   timer.Stop();
+
+  nEvtMaxT->SetEnabled(true);
+
   f_stopWhenEmpty = true;
 }
 
@@ -565,6 +585,8 @@ void MonitorFrame::HardStop() {
   timer.Stop();
   f_stop = true;
   f_stopWhenEmpty = true;
+  nEvtMaxT->SetEnabled(true);
+
   fifo->Discard();
 }
 
