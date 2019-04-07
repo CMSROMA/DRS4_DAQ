@@ -103,7 +103,7 @@ int main(int argc, char* argv[]) {
     }
 
     /* set sampling frequency */
-    std::cout << "Setting frequency to 5 GHz." << std::endl;
+    std::cout << "Setting frequency to " << options.sampleRate << " GHz." << std::endl;
     b->SetFrequency(options.sampleRate, true);
 
     /* set input range to -0.5V ... +0.5V */
