@@ -56,7 +56,7 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
   baseLineWidth(opt->baseLineWidth),
   basename("default"), filename("default"), timestamped(false),
   // eTot12(NULL), ePrompt12(NULL), time12(NULL), time34(NULL),
-  timeLastSave(0),  rate(NULL),
+  timeLastSave(0),  lastSpill(0), rate(NULL),
   drs(_drs), fifo(new DRS4_fifo), writer(NULL),
   rawWave(NULL), event(NULL),
   headers(NULL), nEvtMax(opt->nEvtMax), iEvtSerial(0), iEvtProcessed(0), file(NULL),
@@ -149,9 +149,36 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
   nEvtMaxL->SetTextFont(ft);
   hframeI->AddFrame(nEvtMaxL, new TGLayoutHints(kLHintsCenterX,5,1,3,4));
   
-  nEvtMaxT = new TGTextEntry(hframeI, new TGTextBuffer(100));
+  nEvtMaxT = new TGTextEntry(hframeI, new TGTextBuffer(10));
   nEvtMaxT->SetText(Form("%d",nEvtMax));
   hframeI->AddFrame(nEvtMaxT, new TGLayoutHints(kLHintsCenterX,1,5,3,4));
+
+
+  TGLabel *confL = new TGLabel(hframeI, "Conf: ");
+  confL->SetTextFont(ft);
+  hframeI->AddFrame(confL, new TGLayoutHints(kLHintsCenterX,5,1,3,4));
+  
+  confT = new TGTextEntry(hframeI, new TGTextBuffer(20));
+  confT->SetText(basename);
+  confT->SetEnabled(false);
+  hframeI->AddFrame(confT, new TGLayoutHints(kLHintsCenterX,1,5,3,4));
+
+  TGLabel *runIdL = new TGLabel(hframeI, "RunId: ");
+  runIdL->SetTextFont(ft);
+  hframeI->AddFrame(runIdL, new TGLayoutHints(kLHintsCenterX,5,1,3,4));
+  
+  runIdT = new TGTextEntry(hframeI, new TGTextBuffer(20));
+  runIdT->SetText("test");
+  hframeI->AddFrame(runIdT, new TGLayoutHints(kLHintsCenterX,1,5,3,4));
+
+  TGLabel *outFileL = new TGLabel(hframeI, "OutFile: ");
+  outFileL->SetTextFont(ft);
+  hframeI->AddFrame(outFileL, new TGLayoutHints(kLHintsCenterX,5,1,3,4));
+  
+  outFileT = new TGTextEntry(hframeI, new TGTextBuffer(40));
+  outFileT->SetText("");
+  outFileT->SetEnabled(false);
+  hframeI->AddFrame(outFileT, new TGLayoutHints(kLHintsCenterX,1,5,3,4));
 
   AddFrame(hframeI, new TGLayoutHints(kLHintsCenterX | kLHintsTop | kLHintsExpandY,2,2,2,2));  
 // Create a horizontal frame widget with buttons
@@ -227,7 +254,8 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
   temperatureL->SetTextFont(ft);
   hframeB->AddFrame(temperatureL, new TGLayoutHints(kLHintsCenterX,5,1,3,4));
 
-  temperatureT = new TGLabel(hframeB, Form("%.1f\xB0", drs->GetBoard(0)->GetTemperature()));
+  temperatureT = new TGLabel(
+hframeB, Form("%.1f\xB0", drs->GetBoard(0)->GetTemperature()));
   temperatureT->SetTextFont(ft);
   hframeB->AddFrame(temperatureT, new TGLayoutHints(kLHintsCenterX,1,5,3,4));
 
@@ -268,8 +296,6 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
    h4daqEvent = new H4DAQ::Event(outTree) ;
 #endif
 }
-
-
 
 MonitorFrame::~MonitorFrame() {
 
@@ -331,6 +357,7 @@ void MonitorFrame::Start() {
   std::cout << "Starting Monitor frame.\n";
 
   nEvtMaxT->SetEnabled(false);
+  runIdT->SetEnabled(false);
   if(!drs) {
     std::cout << "MonitorFrame::Start() - ERROR: DRS object empty." << std::endl;
     return;
@@ -548,6 +575,7 @@ int MonitorFrame::Run() {
   DoDraw(true);
 
   nEvtMaxT->SetEnabled(true);
+  runIdT->SetEnabled(true);
 
   std::cout << "Events processed: " << iEvtProcessed << "\n";
   std::cout << Form("Elapsed time: %6.2f s.\n", timer.RealTime());
@@ -570,6 +598,7 @@ void MonitorFrame::Stop() {
   timer.Stop();
 
   nEvtMaxT->SetEnabled(true);
+  runIdT->SetEnabled(true);
 
   f_stopWhenEmpty = true;
 }
@@ -586,6 +615,7 @@ void MonitorFrame::HardStop() {
   f_stop = true;
   f_stopWhenEmpty = true;
   nEvtMaxT->SetEnabled(true);
+  runIdT->SetEnabled(true);
 
   fifo->Discard();
 }
@@ -792,14 +822,22 @@ void MonitorFrame::RateEstimator::Push(int count, double time) {
 
 int MonitorFrame::StartNewFile() {
 
+  lastSpill++;
+
   TTimeStamp ts(std::time(NULL), 0);
   filename = options->outDir+ "/";
-  filename += "test";
+  filename += TString(runIdT->GetText());
+
+  if (!gSystem->OpenDirectory(filename.Data()))
+    gSystem->mkdir(filename.Data());
+
+  filename += Form("/%d",lastSpill);
   filename += "_";
   filename += ts.GetDate(0);
   filename += "-";
   filename += ts.GetTime(0);
 
+  //filename = outDir / runId / spillNumber_timestamp.dat 
 #ifndef ROOT_OUTPUT
   if (file) {
     if (file->is_open()) {
@@ -848,5 +886,6 @@ int MonitorFrame::StartNewFile() {
     }  
 #endif
 
+  outFileT->SetText(filename.Data());
   return 0;
 }

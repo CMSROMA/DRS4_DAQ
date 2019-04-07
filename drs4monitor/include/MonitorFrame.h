@@ -16,6 +16,7 @@
 //#include <TRootEmbeddedCanvas.h>
 #include "TRandom3.h"
 #include "TStopwatch.h"
+#include "TSystem.h"
 #include "WaveProcessor.h"
 
 #ifdef ROOT_OUTPUT
@@ -89,6 +90,9 @@ protected:
   TGLabel *temperatureT;
   TGHProgressBar    *fHProg2;
   TGTextEntry* nEvtMaxT;
+  TGTextEntry* confT;
+  TGTextEntry* runIdT;
+  TGTextEntry* outFileT;
 
   /* TCanvas *fCanvas01; */
   /* TRootCanvas *frCanvas01; */
@@ -119,6 +123,7 @@ protected:
   TStopwatch timer;
   int timeLastSave;
 
+  int lastSpill;
 
   // To avoid putting this part into the class Dictionary
 #ifndef __CINT__
@@ -148,7 +153,6 @@ protected:
 
 
 #endif /* __CINT__ */
-
 
   /*** Run handling ***/
   unsigned nEvtMax;
