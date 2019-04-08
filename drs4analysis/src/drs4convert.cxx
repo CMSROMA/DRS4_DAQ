@@ -93,44 +93,64 @@ int main(int argc, const char * argv[])
    int b, n_boards;
    int chn_index[4];
    double t1, t2, dt;
-   TString infilename;
+   TString inpath,outName;
 
-   
-   if (argc > 1)  infilename = argv[1];
-   else {
-      printf("Usage: drs4analysis <list file name> [<remove spikes (1|0)>] [<common mode file name>]\n");
-      return 0;
-   }
-   bool removeSpikes = false;
-   if (argc > 2) removeSpikes = atoi(argv[2]);
-   
-   std::vector<TString*>filenames;
-   ifstream infile(infilename.Data());
+   if (argc==3)
+     {  
+       inpath = argv[1];
+       outName = argv[2];
+     }
+   else 
+     {
+       printf("Usage: drs4convert <directory with dat file> <output file>\n");
+       return 0;
+     }
+   // bool removeSpikes = false;
+   // if (argc > 2) removeSpikes = atoi(argv[2]);
 
-   if (infile.fail()) {
-     std:cout << "Cannot open list file " << infilename.Data() << std::endl;
-     return -1;
-   }
 
-   TString line;
-   const TRegexp number_patt("[-+ ][0-9]*[.]?[0-9]+");
+    string ls_command;
+    string path;
 
-   while (!infile.eof()) {
-     line.ReadLine(infile);
-     if (line.Sizeof() <= 1) continue;
-     filenames.push_back(new TString(line.Strip(TString::kTrailing, ' ')));
-   }
+    std::vector<TString>filenames;
+    //---Get file list searching in specified path (eos or locally)
+    ls_command = string("ls "+inpath+" | grep '.dat' > /tmp/drs4convert.list");
+    system(ls_command.c_str());
 
-   infile.close();
-   infile.clear();
+    ifstream waveList(string("/tmp/drs4convert.list").c_str(), ios::in);
+    TString line;
+    while (!waveList.eof()) {
+      line.ReadLine(waveList);
+      if (line.Sizeof() <= 1) continue;
+      filenames.push_back(inpath+"/"+TString(line.Strip(TString::kTrailing, ' ')));
+      std::cout << "+++ Adding file " << filenames.back() << std::endl;
+    }
 
-   std::cout << "Processing files:\n";
-   for (int ifile=0; ifile<filenames.size(); ifile++) {
-     std::cout << filenames.at(ifile)->Data() << std::endl;
-   }
-   std::cout << "Spike removal " << (removeSpikes ? "active.\n" : "inactive.\n");
+   // ifstream infile(infilename.Data());
 
-   TString outName("test.root");
+   // if (infile.fail()) {
+   //   std:cout << "Cannot open list file " << infilename.Data() << std::endl;
+   //   return -1;
+   // }
+
+   // TString line;
+   // const TRegexp number_patt("[-+ ][0-9]*[.]?[0-9]+");
+   // while (!infile.eof()) {
+   //   line.ReadLine(infile);
+   //   if (line.Sizeof() <= 1) continue;
+   //   filenames.push_back(new TString(line.Strip(TString::kTrailing, ' ')));
+   // }
+
+
+   // infile.close();
+   // infile.clear();
+
+   // std::cout << "Processing files:\n";
+   // for (int ifile=0; ifile<filenames.size(); ifile++) {
+   //   std::cout << filenames.at(ifile).Data() << std::endl;
+   // }
+   // std::cout << "Spike removal " << (removeSpikes ? "active.\n" : "inactive.\n");
+
    TFile * outFile = TFile::Open (outName, "RECREATE") ;  
    if (!outFile->IsOpen ()) 
      std::cout << "Cannot open " << outName << std::endl;
@@ -141,16 +161,17 @@ int main(int argc, const char * argv[])
    /*** Prepare tree and output histos ***/
    for (unsigned ifile=0; ifile<filenames.size(); ifile++) {
 
-      std::cout << "Opening data file \'" << filenames.at(ifile)->Data() << "\'\n";
+      std::cout << "Opening data file \'" << filenames.at(ifile).Data() << "\'\n";
 
-      infile.open(filenames.at(ifile)->Data(), std::ifstream::binary);
+      ifstream infile;
+      infile.open(filenames.at(ifile).Data(), std::ifstream::binary);
       if (infile.fail()) {
         std::cout << "Cannot open!\n";
         break;
       }
 
       // read file header
-      n_boards = readDataFileHeader (infile, fh, th, bh, eh, tch, ch, &(bin_width[0]), filenames.at(0)->Data());
+      n_boards = readDataFileHeader (infile, fh, th, bh, eh, tch, ch, &(bin_width[0]), filenames.at(0).Data());
 
       eh.event_serial_number = 0;
       while (eh.event_serial_number < 100000) {
@@ -180,7 +201,7 @@ int main(int argc, const char * argv[])
           infile.read(reinterpret_cast<char*>(&bh), sizeof(bh));
            if (std::memcmp(bh.bn, "B#", 2) != 0) {
              std::cout << Form("Invalid board header \'%s\' in event %d in file \'%s\', aborting.\n",
-                 bh.bn, eh.event_serial_number, filenames.at(ifile)->Data());
+                 bh.bn, eh.event_serial_number, filenames.at(ifile).Data());
              return 0;
            }
 
@@ -188,7 +209,7 @@ int main(int argc, const char * argv[])
            infile.read(reinterpret_cast<char*>(&tch), sizeof(tch));
            if (std::memcmp(tch.tc, "T#", 2) != 0) {
              std::cout << Form("Invalid trigger cell header \'%s\' in event %d file \'%s\', aborting.\n",
-                 tch.tc, eh.event_serial_number, filenames.at(ifile)->Data());
+                 tch.tc, eh.event_serial_number, filenames.at(ifile).Data());
              return 0;
            }
 
@@ -222,7 +243,6 @@ int main(int argc, const char * argv[])
              int chidx = chn_index[ichan];
 	     float t = 0;
 	     for (int ibin=0 ; ibin<1024 ; ibin++) {
-	       if (ibin==0)
 	       //get calibrated times
 	       if (ibin>0)
 		 t += bin_width[b][chidx][(ibin+tch.trigger_cell-1) % 1024];
