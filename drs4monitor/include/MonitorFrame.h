@@ -30,6 +30,7 @@
 class TGLabel;
 class TGHProgressBar;
 class TGTextEntry;
+class TGComboBox;
 class TCanvas;
 class TRootCanvas;
 class TH1F;
@@ -80,6 +81,8 @@ public:
 
 
 protected:
+  void ConfigDRS();
+  void ParseConfig();
   /*** Display ***/
 
   config *options;
@@ -90,7 +93,7 @@ protected:
   TGLabel *temperatureT;
   TGHProgressBar    *fHProg2;
   TGTextEntry* nEvtMaxT;
-  TGTextEntry* confT;
+  TGComboBox* confT;
   TGTextEntry* runIdT;
   TGTextEntry* outFileT;
 
@@ -124,7 +127,7 @@ protected:
   int timeLastSave;
 
   int lastSpill;
-
+  int confStatus;
   // To avoid putting this part into the class Dictionary
 #ifndef __CINT__
 

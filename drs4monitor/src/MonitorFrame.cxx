@@ -12,6 +12,7 @@
 #include "TGText.h"
 #include "TGTextEntry.h"
 #include "TGTextBuffer.h"
+#include "TGComboBox.h"
 #include "TGLabel.h"
 #include "TGProgressBar.h"
 #include "TCanvas.h"
@@ -56,7 +57,7 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
   baseLineWidth(opt->baseLineWidth),
   basename("default"), filename("default"), timestamped(false),
   // eTot12(NULL), ePrompt12(NULL), time12(NULL), time34(NULL),
-  timeLastSave(0),  lastSpill(0), rate(NULL),
+  timeLastSave(0),  lastSpill(0), confStatus(-1), rate(NULL),
   drs(_drs), fifo(new DRS4_fifo), writer(NULL),
   rawWave(NULL), event(NULL),
   headers(NULL), nEvtMax(opt->nEvtMax), iEvtSerial(0), iEvtProcessed(0), file(NULL),
@@ -149,7 +150,7 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
   nEvtMaxL->SetTextFont(ft);
   hframeI->AddFrame(nEvtMaxL, new TGLayoutHints(kLHintsCenterX,5,1,3,4));
   
-  nEvtMaxT = new TGTextEntry(hframeI, new TGTextBuffer(10));
+  nEvtMaxT = new TGTextEntry(hframeI, new TGTextBuffer(6));
   nEvtMaxT->SetText(Form("%d",nEvtMax));
   hframeI->AddFrame(nEvtMaxT, new TGLayoutHints(kLHintsCenterX,1,5,3,4));
 
@@ -158,29 +159,39 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
   confL->SetTextFont(ft);
   hframeI->AddFrame(confL, new TGLayoutHints(kLHintsCenterX,5,1,3,4));
   
-  confT = new TGTextEntry(hframeI, new TGTextBuffer(20));
-  confT->SetText(basename);
-  confT->SetEnabled(false);
+  // confT = new TGTextEntry(hframeI, new TGTextBuffer(10));
+  // confT->SetText(basename);
+  // confT->SetEnabled(true);
+  confT = new TGComboBox(hframeI);
+  confT->Resize(80,22);
+  confT->AddEntry("PED",0);
+  confT->AddEntry("LED",1);
+  confT->AddEntry("SOURCE",2);
+  confT->Select(0);
   hframeI->AddFrame(confT, new TGLayoutHints(kLHintsCenterX,1,5,3,4));
 
   TGLabel *runIdL = new TGLabel(hframeI, "RunId: ");
   runIdL->SetTextFont(ft);
   hframeI->AddFrame(runIdL, new TGLayoutHints(kLHintsCenterX,5,1,3,4));
   
-  runIdT = new TGTextEntry(hframeI, new TGTextBuffer(20));
+  runIdT = new TGTextEntry(hframeI, new TGTextBuffer(10));
   runIdT->SetText("test");
   hframeI->AddFrame(runIdT, new TGLayoutHints(kLHintsCenterX,1,5,3,4));
 
-  TGLabel *outFileL = new TGLabel(hframeI, "OutFile: ");
+  AddFrame(hframeI, new TGLayoutHints(kLHintsCenterX | kLHintsTop | kLHintsExpandY,2,2,2,2));  
+
+  TGHorizontalFrame *hframeO = new TGHorizontalFrame(this,250,60);
+
+  TGLabel *outFileL = new TGLabel(hframeO, "OutFile: ");
   outFileL->SetTextFont(ft);
-  hframeI->AddFrame(outFileL, new TGLayoutHints(kLHintsCenterX,5,1,3,4));
+  hframeO->AddFrame(outFileL, new TGLayoutHints(kLHintsCenterX,5,1,3,4));
   
-  outFileT = new TGTextEntry(hframeI, new TGTextBuffer(40));
+  outFileT = new TGTextEntry(hframeO, new TGTextBuffer(40));
   outFileT->SetText("");
   outFileT->SetEnabled(false);
-  hframeI->AddFrame(outFileT, new TGLayoutHints(kLHintsCenterX,1,5,3,4));
+  hframeO->AddFrame(outFileT, new TGLayoutHints(kLHintsCenterX,1,5,3,4));
 
-  AddFrame(hframeI, new TGLayoutHints(kLHintsCenterX | kLHintsTop | kLHintsExpandY,2,2,2,2));  
+  AddFrame(hframeO, new TGLayoutHints(kLHintsLeft | kLHintsTop | kLHintsExpandY,2,2,2,2));  
 // Create a horizontal frame widget with buttons
   TGHorizontalFrame *hframe = new TGHorizontalFrame(this,250,60);
 
@@ -281,7 +292,7 @@ hframeB, Form("%.1f\xB0", drs->GetBoard(0)->GetTemperature()));
   std::cout << "Added labels.\n";
 
 // Set a name to the main frame
-  SetWindowName("Acquisition Control");
+  SetWindowName("DRS4 DAQ Control");
 // Map all subwindows of main frame
   MapSubwindows();
 // Initialize the layout algorithm
@@ -358,6 +369,9 @@ void MonitorFrame::Start() {
 
   nEvtMaxT->SetEnabled(false);
   runIdT->SetEnabled(false);
+  confT->SetEnabled(false);
+  lastSpill=0;
+
   if(!drs) {
     std::cout << "MonitorFrame::Start() - ERROR: DRS object empty." << std::endl;
     return;
@@ -368,7 +382,9 @@ void MonitorFrame::Start() {
     return;
   }
 
-  
+  ParseConfig();
+  ConfigDRS();
+
   if(writer) {
     if (writer->isRunning() || writer->isJoinable()) {
       std::cout << "WARNING: Attempt to start while writer is running.!" << std::endl;
@@ -576,6 +592,7 @@ int MonitorFrame::Run() {
 
   nEvtMaxT->SetEnabled(true);
   runIdT->SetEnabled(true);
+  confT->SetEnabled(true);
 
   std::cout << "Events processed: " << iEvtProcessed << "\n";
   std::cout << Form("Elapsed time: %6.2f s.\n", timer.RealTime());
@@ -599,6 +616,7 @@ void MonitorFrame::Stop() {
 
   nEvtMaxT->SetEnabled(true);
   runIdT->SetEnabled(true);
+  confT->SetEnabled(true);
 
   f_stopWhenEmpty = true;
 }
@@ -616,6 +634,7 @@ void MonitorFrame::HardStop() {
   f_stopWhenEmpty = true;
   nEvtMaxT->SetEnabled(true);
   runIdT->SetEnabled(true);
+  confT->SetEnabled(true);
 
   fifo->Discard();
 }
@@ -733,14 +752,14 @@ void MonitorFrame::AutoSave() {
 
 void MonitorFrame::Save() {
 
-  if ( !timestamped ) {
-    TTimeStamp ts(std::time(NULL), 0);
-    filename = basename;
-    filename += "_";
-    filename += ts.GetDate(0);
-    filename += "-";
-    filename += ts.GetTime(0);
-  }
+  // if ( !timestamped ) {
+  //   TTimeStamp ts(std::time(NULL), 0);
+  //   filename = basename;
+  //   filename += "_";
+  //   filename += ts.GetDate(0);
+  //   filename += "-";
+  //   filename += ts.GetTime(0);
+  // }
 
 //   TString rootfilename(filename); rootfilename += ".root";
 
@@ -888,4 +907,106 @@ int MonitorFrame::StartNewFile() {
 
   outFileT->SetText(filename.Data());
   return 0;
+}
+
+
+void MonitorFrame::ParseConfig()
+{
+  if (!options)
+    return;
+
+  //do not need reconfig
+  if (confStatus = confT->GetSelected())
+    return;
+
+
+  //Configuration possibilities
+  TString inputFile;
+  if(confT->GetSelected() == 0)
+    inputFile="conf/ped.conf";
+  else if(confT->GetSelected() == 1)
+    inputFile="conf/led.conf";
+  else if(confT->GetSelected() == 2)
+    inputFile="conf/source.conf";
+
+  std::ifstream input(inputFile);
+  if(!input.is_open()) {
+    std::cout << "Cannot open input file " << inputFile << ".\n";
+    return ;
+  }
+  
+  if (options->ParseOptions(&input) < 0) {
+    std::cout << "Error parsing options.\n";
+    return;
+  }
+  
+  options->DumpOptions();
+}
+
+void MonitorFrame::ConfigDRS()
+{
+  if (!drs)
+    return;
+  /*
+   * We allow more than one board with synchronized triggers.
+   * For simplicity, we assume that 4 channels are acquired from each board.
+   */
+
+  /* use first board with highest serial number as the master board */
+  drs->SortBoards();
+  DRSBoard *mb = drs->GetBoard(0);
+
+
+  /* common configuration for all boards */
+  for (int iboard=0 ; iboard<drs->GetNumberOfBoards() ; iboard++) {
+
+    std::cout << "Configuring board #" << iboard << std::endl;
+
+    DRSBoard *b = drs->GetBoard(iboard);
+
+    /* initialize board */
+    std::cout << "Initializing." << std::endl;
+    b->Init();
+
+    /* select external reference clock for slave modules */
+    /* NOTE: this only works if the clock chain is connected */
+    if (iboard > 0) {
+      if (b->GetFirmwareVersion() >= 21260) { // this only works with recent firmware versions
+         if (b->GetScaler(5) > 300000)        // check if external clock is connected
+            b->SetRefclk(true);               // switch to external reference clock
+      }
+    }
+
+    /* set sampling frequency */
+    std::cout << "Setting frequency to " << options->sampleRate << " GHz." << std::endl;
+    b->SetFrequency(options->sampleRate, true);
+
+    /* set input range to -0.5V ... +0.5V */
+    std::cout << "Setting input range to (-0.5V -> +0.5V)." << std::endl;
+    b->SetInputRange(options->inputRange);
+
+    /* enable hardware trigger
+     * (1, 0) = "fast trigger", "analog trigger"
+     * Board types 8, 9 always need (1, 0)
+     * other board types take (1, 0) for external (LEMO/FP/TRBUS)
+     * and (0, 1) for internal trigger (analog threshold).
+     */
+    b->EnableTrigger(1, 0);
+
+
+    if (iboard == 0) {
+      /* master board: enable hardware trigger on CH1 at -50 mV negative edge */
+      std::cout << "Configuring master board." << std::endl;
+      b->SetTranspMode(1);
+      b->SetTriggerSource(options->triggerSource);        // set CH1 as source
+      b->SetTriggerLevel(options->triggerLevel);        // -50 mV
+      b->SetTriggerPolarity(options->triggerNegative);      // negative edge
+      b->SetTriggerDelayNs(options->trigDelay);        // Trigger delay shifts waveform left
+    } else {
+      /* slave boards: enable hardware trigger on Trigger IN */
+      std::cout << "Configuring slave board." << std::endl;
+      b->SetTriggerSource(1<<4);        // set Trigger IN as source
+      b->SetTriggerPolarity(false);     // positive edge
+    }
+  } // End loop for common configuration
 }

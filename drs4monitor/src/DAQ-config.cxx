@@ -16,7 +16,7 @@
 using namespace DRS4_data;
 
 config::config(Observables *_obs) :
-  nEvtMax(10), baseLineWidth(20.),
+  nEvtMax(5000), baseLineWidth(20.),
   _w(600), _h(350),
   _tRed(10), _tRed2D(50), _xRed(2), _yRed(2),
   sampleRate(5), inputRange(0), triggerLevel(-0.05),
