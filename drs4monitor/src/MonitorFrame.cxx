@@ -88,8 +88,8 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
   // time34 = new TH2F("time34", "t_{4} vs. t_{3}; t_{3} (ns); t_{4} (ns)", 100, 0., 100., 100, 0., 100.);
 
 
-  if( gApplication->Argc() > 1 ) basename = gApplication->Argv()[1];
-  std::cout << "basename = " << basename << "\n";
+  // if( gApplication->Argc() > 1 ) basename = gApplication->Argv()[1];
+  // std::cout << "basename = " << basename << "\n";
 
   // Placement of histograms
   // unsigned ny = int(sqrt(float(nObservables)));
