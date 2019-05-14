@@ -17,6 +17,7 @@
 #include "TTree.h"
 #include "TCanvas.h"
 #include "TStyle.h"
+#include "TSystem.h"
 #include "TString.h"
 #include "Fit/Fitter.h"
 #include "Fit/FitResult.h"
@@ -150,8 +151,12 @@ int main(int argc, const char * argv[])
    //   std::cout << filenames.at(ifile).Data() << std::endl;
    // }
    // std::cout << "Spike removal " << (removeSpikes ? "active.\n" : "inactive.\n");
+    
+    if (!gSystem->OpenDirectory(outName.Data()))
+      gSystem->mkdir(outName.Data());
 
-   TFile * outFile = TFile::Open (outName, "RECREATE") ;  
+   TFile * outFile = TFile::Open (outName+"/h4Tree.root", "RECREATE") ;  
+
    if (!outFile->IsOpen ()) 
      std::cout << "Cannot open " << outName << std::endl;
    

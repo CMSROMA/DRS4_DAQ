@@ -916,7 +916,7 @@ void MonitorFrame::ParseConfig()
     return;
 
   //do not need reconfig
-  if (confStatus = confT->GetSelected())
+  if (confStatus == confT->GetSelected())
     return;
 
 
@@ -940,6 +940,7 @@ void MonitorFrame::ParseConfig()
     return;
   }
   
+  confStatus = confT->GetSelected();
   options->DumpOptions();
 }
 
