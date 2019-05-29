@@ -8,6 +8,7 @@
 #include <math.h>
 #include <fstream>
 #include <vector>
+#include <time.h>
 
 #include "TGraph.h"
 #include "TH1F.h"
@@ -163,6 +164,7 @@ int main(int argc, const char * argv[])
    TTree * outTree = new TTree ("H4tree", "H4 testbeam tree") ;
    H4DAQ::Event* event_ = new H4DAQ::Event(outTree) ;
 
+   int startTime=-999;
    /*** Prepare tree and output histos ***/
    for (unsigned ifile=0; ifile<filenames.size(); ifile++) {
 
@@ -193,10 +195,37 @@ int main(int argc, const char * argv[])
 	//fill event time
 	timeData td; td.board=1;
 	td.time=eh.hour*3600000+eh.minute*60000+eh.second*1000+eh.millisecond;
+
+	if (startTime==-999)
+	  {
+	    startTime=td.time;
+	    td.time=0;
+	  }
+	else
+	  {
+	    td.time= td.time - startTime;
+	  }
+
 	event_->evtTimes.push_back(td);
 				   
+	struct tm * timeinfo;
+	time_t ts = time(NULL);
+	timeinfo = localtime(&ts);
+	timeinfo->tm_year   = eh.year - 1900;
+	timeinfo->tm_mon    = eh.month - 1;    //months since January - [0,11]
+	timeinfo->tm_mday   = eh.day;          //day of the month - [1,31] 
+	timeinfo->tm_hour   = eh.hour;         //hours since midnight - [0,23]
+	timeinfo->tm_min    = eh.minute;          //minutes after the hour - [0,59]
+	timeinfo->tm_sec    = eh.second;          //seconds after the minute - [0,59]
+	
+	ts = mktime ( timeinfo );
+
+	timeData td1; td.board=1;
+	td1.time=ts;
+	event_->evtTimes.push_back(td1);
+	
         if (eh.event_serial_number%100 == 0) {
-          std::cout << Form("Found event #%d at %d:%02d:%02d\n", eh.event_serial_number, eh.hour, eh.minute, eh.second);
+          std::cout << Form("Found event #%d at %d:%02d:%02d ts:%d.%d\n", eh.event_serial_number, eh.hour, eh.minute, eh.second,ts,td.time%1000);
         }
 
         // loop over all boards in data file
