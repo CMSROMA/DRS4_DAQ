@@ -1,5 +1,7 @@
 #include "Event.h"
 #include <assert.h>
+#include <iostream>
+
 #define DEBUG_UNPACKER 0
 
 using namespace H4DAQ;

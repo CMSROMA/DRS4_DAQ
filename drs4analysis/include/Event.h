@@ -1,10 +1,7 @@
 #ifndef Event_hpp
 #define Event_hpp
 
-#include <TFile.h>
 #include <TTree.h>
-#include <TString.h>
-#include <iostream>
 #include <math.h>
 
 using namespace std ;

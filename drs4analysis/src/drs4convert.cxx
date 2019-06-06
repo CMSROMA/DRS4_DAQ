@@ -5,32 +5,18 @@
 */
 
 #include <cstring>
-#include <math.h>
 #include <fstream>
+#include <iostream>
 #include <vector>
 #include <time.h>
 
-#include "TGraph.h"
-#include "TH1F.h"
-#include "TH2F.h"
-#include "TProfile.h"
+#include "TROOT.h"
+#include "TSystem.h"
 #include "TFile.h"
 #include "TTree.h"
-#include "TCanvas.h"
-#include "TStyle.h"
-#include "TSystem.h"
 #include "TString.h"
-#include "Fit/Fitter.h"
-#include "Fit/FitResult.h"
-#include "Math/MinimizerOptions.h"
-#include "TRegexp.h"
-#include "TLegend.h"
-#include "TLegendEntry.h"
 
-#include "WaveProcessor.h"
-#include "DRS4_data.h"
 #include "Event.h"
-#include "BaseLineModel.h"
 
 typedef struct {
    char           tag[3];
@@ -267,10 +253,6 @@ int main(int argc, const char * argv[])
               infile.read(reinterpret_cast<char*>(&scaler), sizeof(int));
               infile.read(reinterpret_cast<char*>(voltage[ichan]), sizeof(short)*1024);
            }
-
-           // Remove spikes
-           // Wrote own function because trigger cell is not always well written in file
-           // if (removeSpikes) DRS4_data::RemoveSpikes(voltage, 20, 2);
 
            // Process data in all channels
            for (unsigned ichan=0 ; ichan<4 ; ichan++) {
