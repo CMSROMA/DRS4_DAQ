@@ -66,6 +66,8 @@ using namespace H4DAQ;
 
 int main(int argc, const char * argv[])
 {
+  gROOT->SetBatch(1);
+
    FHEADER  fh;
    THEADER  th;
    BHEADER  bh;
@@ -139,6 +141,7 @@ int main(int argc, const char * argv[])
    // }
    // std::cout << "Spike removal " << (removeSpikes ? "active.\n" : "inactive.\n");
     
+
     if (!gSystem->OpenDirectory(outName.Data()))
       gSystem->mkdir(outName.Data());
 
