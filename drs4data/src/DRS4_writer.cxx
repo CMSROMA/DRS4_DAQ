@@ -168,6 +168,12 @@ void DRS4_writer::run( DRS4_writer* w, const unsigned nEvtMax) {
     if (w->iEvent%500 == 0) {
       std::cout << "Acquired event #" << w->iEvent << std::endl;
     }
+
+    if (w->iEvent%w->spillSize == 0 && w->interSpillTime>0) {
+      std::cout << "Sleeping for " << w->interSpillTime  << " seconds " << std::endl;
+      sleep(w->interSpillTime);
+    }
+
   } // Loop over events
 
   // Set board(s) to idle

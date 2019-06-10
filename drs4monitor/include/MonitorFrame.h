@@ -92,7 +92,11 @@ protected:
   TGLabel *rateT;
   TGLabel *temperatureT;
   TGHProgressBar    *fHProg2;
+
   TGTextEntry* nEvtMaxT;
+  TGTextEntry* spillSizeT;
+  TGTextEntry* interSpillTimeT;
+
   TGComboBox* confT;
   TGTextEntry* runIdT;
   TGTextEntry* outFileT;
@@ -161,6 +165,9 @@ protected:
   unsigned nEvtMax;
   unsigned iEvtProcessed; // Number of events processed by the reader
   unsigned iEvtSerial;    // Serial number reported by the last processed event
+
+  unsigned spillSize; // Number of events per spill
+  unsigned interSpillTime; // time between spills in second
 
 #ifndef ROOT_OUTPUT
   std::ofstream *file;

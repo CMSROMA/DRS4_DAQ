@@ -99,7 +99,7 @@ int DRS4_reader::run(const char *filename, DRS4_writer * const writer) {
       iEvtSerial = rawWave->header.getEventNumber();
       std::cout << "Read event #" << iEvtSerial << std::endl;
       std::cout << "Trigger cell is " << rawWave->header.getTriggerCell() << std::endl;
-      event = new DRS4_data::Event(iEvtSerial, rawWave->header, drs);
+      event = new DRS4_data::Event(iEvtSerial, 1, rawWave->header, drs);
 
       for(int iboard=0; iboard<headers->ChTimes()->size(); iboard++) {
         DRSBoard *b = drs->GetBoard(iboard);

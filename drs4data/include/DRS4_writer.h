@@ -34,6 +34,20 @@ public:
 
   unsigned NEvents() const { return iEvent; }
 
+  void setSpillSize(unsigned spill) { 
+    if (!f_isRunning)
+      spillSize = spill;
+    else
+      return;
+  }
+
+  void setInterSpillTime(unsigned time) { 
+    if (!f_isRunning)
+      interSpillTime = time;
+    else
+      return;
+  }
+
   double Temperature() {
     if (!f_isRunning)  return drs->GetBoard(0)->GetTemperature();
     else               return temperature;
@@ -61,7 +75,9 @@ private:
   bool f_autoTrigger;
 
   double temperature;
-
+  
+  unsigned spillSize;
+  unsigned interSpillTime;
 };
 
 

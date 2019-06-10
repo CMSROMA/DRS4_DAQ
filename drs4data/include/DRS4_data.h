@@ -66,10 +66,12 @@ namespace DRS4_data {
     EHEADER(const EHEADER &);
 
     void setEvtNumber(unsigned evtnum) { event_serial_number = evtnum; }
+    void setSpillNumber(unsigned spillnum) { spill_number = spillnum; }
     void setTimeStamp();
     void setRange(unsigned short _range) { range = _range; }
 
     unsigned int getEventNumber()   const { return event_serial_number; }
+    unsigned int getSpillNumber()   const { return spill_number; }
     unsigned short getYear()          const { return year; }
     unsigned short getMonth()         const { return month; }
     unsigned short getDay()           const { return day; }
@@ -90,6 +92,7 @@ namespace DRS4_data {
   private:
      const char     event_header[4];
      unsigned int   event_serial_number;
+     unsigned int   spill_number;
      unsigned short year;
      unsigned short month;
      unsigned short day;
@@ -160,8 +163,8 @@ namespace DRS4_data {
   class Event {
 
   public:
-    Event(const unsigned iEvt, DRS*);
-    Event(const unsigned iEvt, const EHEADER, DRS*);
+    Event(const unsigned iEvt, const unsigned spill, DRS*);
+    Event(const unsigned iEvt, const unsigned spill, const EHEADER, DRS*);
     ~Event();
 
     // Pointer to data to be stored
@@ -176,6 +179,7 @@ namespace DRS4_data {
     std::vector<BHEADER*>  getBoardHeaders() const { return bheaders; }
     std::vector<TCHEADER*>  getTriggerCells() const { return tcells; }
     unsigned getEvtNumber() const { return header.getEventNumber(); }
+    unsigned getSpillNumber() const { return header.getSpillNumber(); }
 
     int write(std::ofstream *) const ;
 

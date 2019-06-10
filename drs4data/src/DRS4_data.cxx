@@ -21,7 +21,7 @@ namespace DRS4_data {
   /*** Class EHEADER ***/
   EHEADER::EHEADER() :
     event_header({'E', 'H', 'D', 'R'}),
-    event_serial_number(0),
+    event_serial_number(0), spill_number(0),
     year(2017), month(0), day(0), hour(0), minute(0), second(0), millisecond(0),
     range(0), bheader(0), tcheader(-1), msTotRun(0)
   {
@@ -32,6 +32,7 @@ namespace DRS4_data {
   EHEADER::EHEADER(const EHEADER &eh) :
     event_header({'E', 'H', 'D', 'R'}),
     event_serial_number(eh.getEventNumber()),
+    spill_number(eh.getSpillNumber()),
     year(eh.getYear()), month(eh.getMonth()), day(eh.getDay()),
     hour(eh.getHour()), minute(eh.getMinute()), second(eh.getSecond()),
     millisecond(eh.getMillisecond()), range(eh.getRange()),
@@ -70,6 +71,8 @@ namespace DRS4_data {
     file->write(event_header, sizeof(event_header));
     file->write( reinterpret_cast<const char*>(&event_serial_number),
                  sizeof(event_serial_number));
+    file->write( reinterpret_cast<const char*>(&spill_number),
+                 sizeof(spill_number));
     file->write( reinterpret_cast<const char*>(&year), sizeof(year) );
     file->write( reinterpret_cast<const char*>(&month), sizeof(month) );
     file->write( reinterpret_cast<const char*>(&day), sizeof(day) );
@@ -101,9 +104,10 @@ namespace DRS4_data {
 
   /*** class Event ***/
 
-  Event::Event(const unsigned iEvt, DRS *drs)
+  Event::Event(const unsigned iEvt, const unsigned spill, DRS *drs)
   {
     header.setEvtNumber(iEvt);
+    header.setSpillNumber(spill);
     header.setTimeStamp();
     header.setRange(int(floor( (drs->GetBoard(0)->GetCalibratedInputRange())*1000 + 0.5)));
 
@@ -114,9 +118,10 @@ namespace DRS4_data {
   }
 
 
-  Event::Event(const unsigned iEvt, const EHEADER _header, DRS *drs) :
+  Event::Event(const unsigned iEvt, const unsigned spill, const EHEADER _header, DRS *drs) :
     header(_header)
   {
+    header.setSpillNumber(spill);
     for( unsigned iboard=0; iboard<drs->GetNumberOfBoards(); iboard++) {
       AddBoard(drs->GetBoard(iboard));
     }
@@ -219,7 +224,7 @@ namespace DRS4_data {
     // std::cout << "Filling event  " << header.getEventNumber() << std::endl;
     //fill h4daq format
     h4event->id.runNumber = 1;
-    h4event->id.spillNumber = 1;
+    h4event->id.spillNumber = event->getEventHeader().getSpillNumber();
     h4event->id.evtNumber = event->getEventHeader().getEventNumber();
 
     //fill event time

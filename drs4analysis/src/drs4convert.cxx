@@ -49,6 +49,7 @@ typedef struct {
 typedef struct {
    char           event_header[4];
    unsigned int   event_serial_number;
+   unsigned int   spill_number;
    unsigned short year;
    unsigned short month;
    unsigned short day;
@@ -181,7 +182,7 @@ int main(int argc, const char * argv[])
       n_boards = readDataFileHeader (infile, fh, th, bh, eh, tch, ch, &(bin_width[0]), filenames.at(0).Data());
 
       eh.event_serial_number = 0;
-      while (eh.event_serial_number < 100000) {
+      while (eh.event_serial_number < 1000000) {
  
        // read event header
         infile.read(reinterpret_cast<char*>(&eh), sizeof(eh));
@@ -189,7 +190,7 @@ int main(int argc, const char * argv[])
 
 	event_->clear();
 	event_->id.runNumber = 1;
-	event_->id.spillNumber = 1;
+	event_->id.spillNumber = eh.spill_number;
 	event_->id.evtNumber = eh.event_serial_number;
 
 	//fill event time

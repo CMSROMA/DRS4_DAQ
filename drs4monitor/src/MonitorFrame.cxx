@@ -60,7 +60,9 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
   timeLastSave(0),  lastSpill(0), confStatus(-1), rate(NULL),
   drs(_drs), fifo(new DRS4_fifo), writer(NULL),
   rawWave(NULL), event(NULL),
-  headers(NULL), nEvtMax(opt->nEvtMax), iEvtSerial(0), iEvtProcessed(0), file(NULL),
+  headers(NULL), nEvtMax(opt->nEvtMax), iEvtSerial(0), iEvtProcessed(0),
+  spillSize(10000),interSpillTime(0),
+  file(NULL),
 #ifdef ROOT_OUTPUT
   outTree(NULL), h4daqEvent(NULL),
 #endif
@@ -150,7 +152,7 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
   nEvtMaxL->SetTextFont(ft);
   hframeI->AddFrame(nEvtMaxL, new TGLayoutHints(kLHintsCenterX,5,1,3,4));
   
-  nEvtMaxT = new TGTextEntry(hframeI, new TGTextBuffer(6));
+  nEvtMaxT = new TGTextEntry(hframeI, new TGTextBuffer(4));
   nEvtMaxT->SetText(Form("%d",nEvtMax));
   hframeI->AddFrame(nEvtMaxT, new TGLayoutHints(kLHintsCenterX,1,5,3,4));
 
@@ -179,6 +181,26 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
   hframeI->AddFrame(runIdT, new TGLayoutHints(kLHintsCenterX,1,5,3,4));
 
   AddFrame(hframeI, new TGLayoutHints(kLHintsCenterX | kLHintsTop | kLHintsExpandY,2,2,2,2));  
+
+  TGHorizontalFrame *hframeI_1 = new TGHorizontalFrame(this,250,60);
+
+  TGLabel *spillSizeL = new TGLabel(hframeI_1, "SpillSize: ");
+  spillSizeL->SetTextFont(ft);
+  hframeI_1->AddFrame(spillSizeL, new TGLayoutHints(kLHintsCenterX,5,1,3,4));
+  
+  spillSizeT = new TGTextEntry(hframeI_1, new TGTextBuffer(4));
+  spillSizeT->SetText(Form("%d",spillSize));
+  hframeI_1->AddFrame(spillSizeT, new TGLayoutHints(kLHintsCenterX,1,5,3,4));
+
+  TGLabel *interSpillTimeL = new TGLabel(hframeI_1, "InterSpill Time (s): ");
+  interSpillTimeL->SetTextFont(ft);
+  hframeI_1->AddFrame(interSpillTimeL, new TGLayoutHints(kLHintsCenterX,5,1,3,4));
+  
+  interSpillTimeT = new TGTextEntry(hframeI_1, new TGTextBuffer(4));
+  interSpillTimeT->SetText(Form("%d",interSpillTime));
+  hframeI_1->AddFrame(interSpillTimeT, new TGLayoutHints(kLHintsCenterX,1,5,3,4));
+
+  AddFrame(hframeI_1, new TGLayoutHints(kLHintsLeft | kLHintsTop | kLHintsExpandY,2,2,2,2));  
 
   TGHorizontalFrame *hframeO = new TGHorizontalFrame(this,250,60);
 
@@ -368,6 +390,8 @@ void MonitorFrame::Start() {
   std::cout << "Starting Monitor frame.\n";
 
   nEvtMaxT->SetEnabled(false);
+  spillSizeT->SetEnabled(false);
+  interSpillTimeT->SetEnabled(false);
   runIdT->SetEnabled(false);
   confT->SetEnabled(false);
   lastSpill=0;
@@ -432,6 +456,10 @@ void MonitorFrame::Start() {
 
   /*** Start writer ***/
   nEvtMax=TString(nEvtMaxT->GetText()).Atoi();
+  spillSize=TString(spillSizeT->GetText()).Atoi();
+  interSpillTime=TString(interSpillTimeT->GetText()).Atoi();
+  writer->setSpillSize(spillSize);
+  writer->setInterSpillTime(interSpillTime);
   fHProg2->SetRange(0,nEvtMax);
   writer->start(nEvtMax);
   while (!writer->isRunning()) { std::this_thread::sleep_for(std::chrono::milliseconds(10)); };
@@ -500,12 +528,12 @@ int MonitorFrame::Run() {
     if(rawWave) {
       iEvtSerial = rawWave->header.getEventNumber();
       iEvtLocal++;
-      if (iEvtLocal%10000 == 0) {
+      if (iEvtLocal%spillSize == 0) {
         StartNewFile(); //a new spill in H4DAQ language
       }
       //std::cout << "Read event #" << iEvtSerial << std::endl;
       //      std::cout << "Trigger cell is " << rawWave->header.getTriggerCell() << std::endl;
-      event = new DRS4_data::Event(iEvtSerial, rawWave->header, drs);
+      event = new DRS4_data::Event(iEvtSerial, lastSpill, rawWave->header, drs);
 
       // Observables *obs[2] = {NULL, NULL};
 
@@ -591,6 +619,8 @@ int MonitorFrame::Run() {
   DoDraw(true);
 
   nEvtMaxT->SetEnabled(true);
+  spillSizeT->SetEnabled(true);
+  interSpillTimeT->SetEnabled(true);
   runIdT->SetEnabled(true);
   confT->SetEnabled(true);
 
@@ -615,6 +645,8 @@ void MonitorFrame::Stop() {
   timer.Stop();
 
   nEvtMaxT->SetEnabled(true);
+  spillSizeT->SetEnabled(true);
+  interSpillTimeT->SetEnabled(true);
   runIdT->SetEnabled(true);
   confT->SetEnabled(true);
 
@@ -633,6 +665,8 @@ void MonitorFrame::HardStop() {
   f_stop = true;
   f_stopWhenEmpty = true;
   nEvtMaxT->SetEnabled(true);
+  spillSizeT->SetEnabled(true);
+  interSpillTimeT->SetEnabled(true);
   runIdT->SetEnabled(true);
   confT->SetEnabled(true);
 
