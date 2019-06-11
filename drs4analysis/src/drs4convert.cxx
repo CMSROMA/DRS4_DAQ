@@ -35,6 +35,7 @@ typedef struct {
 typedef struct {
    char           event_header[4];
    unsigned int   event_serial_number;
+   unsigned int   spill_number;
    unsigned short year;
    unsigned short month;
    unsigned short day;
@@ -178,7 +179,7 @@ int main(int argc, const char * argv[])
 
 	event_->clear();
 	event_->id.runNumber = 1;
-	event_->id.spillNumber = 1;
+	event_->id.spillNumber = eh.spill_number;
 	event_->id.evtNumber = eh.event_serial_number;
 
 	//fill event time
