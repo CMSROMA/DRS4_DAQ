@@ -32,6 +32,8 @@
 #include "Event.h"
 #include "BaseLineModel.h"
 
+#define MAX_PROCESSED_SPILL_PER_FILE 5
+
 typedef struct {
    char           tag[3];
    char           version;
@@ -79,7 +81,34 @@ int readDataFileHeader (std::ifstream &, FHEADER  &, THEADER  &, BHEADER  &,
 
 using namespace H4DAQ;
 
-int main(int argc, const char * argv[])
+TFile * outFile = NULL;
+TTree * outTree = NULL;
+H4DAQ::Event* event_ = NULL;
+
+void createOutputFile(TString outName, int seq)
+{
+  if (outFile)
+    {
+      outFile->ls () ;
+      outFile->cd () ;
+      if (outTree)
+	outTree->Write ("",TObject::kOverwrite) ;
+      outFile->Close () ;
+    }
+  outFile = TFile::Open (Form("%s/h4Tree_%d.root",outName.Data(),seq), "RECREATE") ;  
+
+  if (!outFile->IsOpen ()) 
+    std::cout << "Cannot open " << outFile->GetName() << std::endl;
+   
+  outTree = new TTree ("H4tree", "H4 testbeam tree");
+
+  if (event_)
+    delete event_;
+  event_ = new H4DAQ::Event(outTree) ;
+}
+
+
+int main(int argc, char **argv)
 {
    FHEADER  fh;
    THEADER  th;
@@ -96,39 +125,64 @@ int main(int argc, const char * argv[])
    int b, n_boards;
    int chn_index[4];
    double t1, t2, dt;
-   TString inpath,outName;
+   TString inpath,outName,spills;
+   
+   int prescale=-1;
+   bool allFiles=false;
 
-   if (argc==3)
-     {  
-       inpath = argv[1];
-       outName = argv[2];
-     }
-   else 
-     {
-       printf("Usage: drs4convert <directory with dat file> <output file>\n");
-       return 0;
-     }
-   // bool removeSpikes = false;
-   // if (argc > 2) removeSpikes = atoi(argv[2]);
+   int c;
+   opterr = 0;
 
+   while ((c = getopt (argc, argv, "i:o:s:p:a")) != -1)
+     switch (c)
+       {
+       case 'i':
+	 inpath = TString(optarg);
+	 break;
+       case 'o':
+	 outName = TString(optarg);
+	 break;
+       case 's':
+	 spills = TString(optarg);
+	 break;
+       case 'p':
+	 prescale = TString(optarg).Atoi();
+	 break;
+       case 'a':
+	 allFiles=true;
+	 break;
+       // case '?':
+       // 	 if (optopt == 'c')
+       // 	   fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+       // 	 else if (isprint (optopt))
+       // 	   fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+       // 	 else
+       // 	   fprintf (stderr,
+       // 		    "Unknown option character `\\x%x'.\n",
+       // 		    optopt);
+       // 	 return 1;
+       // default:
+       // 	 abort ();
+       }
 
-    string ls_command;
-    string path;
-
-    std::vector<TString>filenames;
-    //---Get file list searching in specified path (eos or locally)
-    ls_command = string("ls "+inpath+" | grep '.dat' > /tmp/drs4convert.list");
-    system(ls_command.c_str());
-
-    ifstream waveList(string("/tmp/drs4convert.list").c_str(), ios::in);
-    TString line;
-    while (!waveList.eof()) {
-      line.ReadLine(waveList);
-      if (line.Sizeof() <= 1) continue;
-      filenames.push_back(inpath+"/"+TString(line.Strip(TString::kTrailing, ' ')));
-      std::cout << "+++ Adding file " << filenames.back() << std::endl;
-    }
-
+   
+   string ls_command;
+   string path;
+   
+   std::vector<TString>filenames;
+   //---Get file list searching in specified path (eos or locally)
+   ls_command = string("ls "+inpath+" | grep '.dat' > /tmp/drs4convert.list");
+   system(ls_command.c_str());
+   
+   ifstream waveList(string("/tmp/drs4convert.list").c_str(), ios::in);
+   TString line;
+   while (!waveList.eof()) {
+     line.ReadLine(waveList);
+     if (line.Sizeof() <= 1) continue;
+     filenames.push_back(inpath+"/"+TString(line.Strip(TString::kTrailing, ' ')));
+     std::cout << "+++ Adding file " << filenames.back() << std::endl;
+   }
+   
    // ifstream infile(infilename.Data());
 
    // if (infile.fail()) {
@@ -154,35 +208,50 @@ int main(int argc, const char * argv[])
    // }
    // std::cout << "Spike removal " << (removeSpikes ? "active.\n" : "inactive.\n");
     
-    if (!gSystem->OpenDirectory(outName.Data()))
+   if (!gSystem->OpenDirectory(outName.Data()))
       gSystem->mkdir(outName.Data());
-
-   TFile * outFile = TFile::Open (outName+"/h4Tree.root", "RECREATE") ;  
-
-   if (!outFile->IsOpen ()) 
-     std::cout << "Cannot open " << outName << std::endl;
    
-   TTree * outTree = new TTree ("H4tree", "H4 testbeam tree") ;
-   H4DAQ::Event* event_ = new H4DAQ::Event(outTree) ;
+   
+   std::set<int> spillNumbers;
+   Ssiz_t from = 0;
+   TString tok;
+   while (spills.Tokenize(tok, from, ",")) {
+     spillNumbers.insert(tok.Atoi());
+   }
 
    int startTime=-999;
+   int processedSpills=0;
    /*** Prepare tree and output histos ***/
    for (unsigned ifile=0; ifile<filenames.size(); ifile++) {
 
-      std::cout << "Opening data file \'" << filenames.at(ifile).Data() << "\'\n";
+     if (!allFiles && spillNumbers.size())
+       {
+	 TString baseName(gSystem->BaseName(filenames.at(ifile).Data()));
+	 TString spill;
+	 Ssiz_t from = 0;
+	 baseName.Tokenize(spill, from, "_");
+	 if (spillNumbers.find(spill.Atoi()) == spillNumbers.end() )
+	   continue;
+       }
 
-      ifstream infile;
-      infile.open(filenames.at(ifile).Data(), std::ifstream::binary);
-      if (infile.fail()) {
-        std::cout << "Cannot open!\n";
-        break;
+     if (processedSpills%MAX_PROCESSED_SPILL_PER_FILE==0)
+       createOutputFile(outName,processedSpills/MAX_PROCESSED_SPILL_PER_FILE +1);
+
+     std::cout << "Opening data file \'" << filenames.at(ifile).Data() << "\'\n";
+
+     ifstream infile;
+     infile.open(filenames.at(ifile).Data(), std::ifstream::binary);
+     if (infile.fail()) {
+       std::cout << "Cannot open!\n";
+       break;
       }
 
+     processedSpills++;     
       // read file header
-      n_boards = readDataFileHeader (infile, fh, th, bh, eh, tch, ch, &(bin_width[0]), filenames.at(0).Data());
+     n_boards = readDataFileHeader (infile, fh, th, bh, eh, tch, ch, &(bin_width[0]), filenames.at(0).Data());
 
-      eh.event_serial_number = 0;
-      while (eh.event_serial_number < 1000000) {
+     eh.event_serial_number = 0;
+     while (eh.event_serial_number < 1000000) {
  
        // read event header
         infile.read(reinterpret_cast<char*>(&eh), sizeof(eh));
@@ -299,7 +368,9 @@ int main(int argc, const char * argv[])
 	     
            } // Loop over channels
         } // Loop over the boards
-	event_->Fill();
+
+	if ( (prescale < 0) || ( (prescale>0) && eh.event_serial_number%prescale==0))
+	  event_->Fill();
       } // Loop over events
 
       infile.close();
