@@ -12,23 +12,51 @@
 #include <iostream>
 #include <cassert>
 #include <cstdio>
+#include <stdlib.h>
 #include <cstring>
 
-
-
-
+#ifdef LED_SCAN
+DRS4_writer::DRS4_writer(DRS *const _drs, DRS4_data::DRS4_fifo *const _fifo, bool ledscan) :
+#else
 DRS4_writer::DRS4_writer(DRS *const _drs, DRS4_data::DRS4_fifo *const _fifo) :
+#endif
   drs(_drs), board(NULL),
   fifo(_fifo), event(NULL), iEvent(0),
   internalThread(NULL), f_stop(false), f_isRunning(false), f_autoTrigger(false)
 {
   std::cout << "DRS4_writer::DRS4_writer()." << std::endl;
+#ifdef LED_SCAN
+  ledScan=ledscan;
+  if (ledScan)
+    {
+      char ledAmplCommand[400];
+      float ledAmpl=LED_SCAN_START;
+      sprintf(ledAmplCommand,"echo 'C1:BSWV WVTP,PULSE,FRQ,20000HZ,HLEV,0.07V,LLEV,0V,DUTY,0.2,RISE,6e-09S,FALL,6e-09S,DLY,0' >%s\n",LED_SCAN_PORT);
+      printf(ledAmplCommand);
+      system(ledAmplCommand);
+      sprintf(ledAmplCommand,"echo 'C2:BSWV WVTP,PULSE,FRQ,20000HZ,HLEV,%4.3fV,LLEV,0V,DUTY,0.12,RISE,6e-09S,FALL,6e-09S,DLY,0' >%s\n",ledAmpl,LED_SCAN_PORT);
+      printf(ledAmplCommand);
+      system(ledAmplCommand);
+      system(ledAmplCommand);
+      sprintf(ledAmplCommand,"echo 'C1:OUTP ON' >%s\n",LED_SCAN_PORT);
+      printf(ledAmplCommand);
+      system(ledAmplCommand);
+      sprintf(ledAmplCommand,"echo 'C2:OUTP ON' >%s\n",LED_SCAN_PORT);
+      printf(ledAmplCommand);
+      system(ledAmplCommand);
+      // if (ledPort)
+      // 	fprintf(ledPort,ledAmplCommand);
+    }
+#endif
 }
 
 
 DRS4_writer::~DRS4_writer() {
-
   stop();
+// #ifdef LED_SCAN
+//   if (ledPort)
+//     fclose(ledPort);
+// #endif
 }
 
 
@@ -169,7 +197,20 @@ void DRS4_writer::run( DRS4_writer* w, const unsigned nEvtMax) {
       std::cout << "Acquired event #" << w->iEvent << std::endl;
     }
 
-    if (w->iEvent%w->spillSize == 0 && w->interSpillTime>0) {
+    if (w->iEvent<nEvtMax && w->iEvent%w->spillSize == 0 && w->interSpillTime>0) {
+#ifdef LED_SCAN
+      if (w->ledScan)
+	{
+	  char ledAmplCommand[400];
+	  float ledAmpl=LED_SCAN_START + LED_SCAN_STEP*(w->iEvent/w->spillSize);
+	  sprintf(ledAmplCommand,"echo 'C1:BSWV WVTP,PULSE,FRQ,20000HZ,HLEV,0.07V,LLEV,0V,DUTY,0.2,RISE,6e-09S,FALL,6e-09S,DLY,0' >%s\n",LED_SCAN_PORT);
+	  printf(ledAmplCommand);
+	  system(ledAmplCommand);
+	  sprintf(ledAmplCommand,"echo 'C2:BSWV WVTP,PULSE,FRQ,20000HZ,HLEV,%4.3fV,LLEV,0V,DUTY,0.12,RISE,6e-09S,FALL,6e-09S,DLY,0' >%s\n",ledAmpl,LED_SCAN_PORT);
+	  printf(ledAmplCommand);
+	  system(ledAmplCommand);
+	}
+#endif
       std::cout << "Sleeping for " << w->interSpillTime  << " seconds " << std::endl;
       sleep(w->interSpillTime);
     }

@@ -15,12 +15,21 @@
 #include "DRS4_fifo.h"
 
 #include <thread>
+#include <stdio.h>
 
+#define LED_SCAN
+#define LED_SCAN_PORT "/dev/usbtmc0"
+#define LED_SCAN_START 2.875
+#define LED_SCAN_STEP  0.015
 
 class DRS4_writer {
 
 public:
-  DRS4_writer(DRS *const, DRS4_data::DRS4_fifo *const);
+#ifdef LED_SCAN
+   DRS4_writer(DRS *const, DRS4_data::DRS4_fifo *const,bool ledscan=0);
+#else
+   DRS4_writer(DRS *const, DRS4_data::DRS4_fifo *const);
+#endif
   ~DRS4_writer();
 
   void start(const unsigned _nEvtMax = -1);
@@ -48,10 +57,17 @@ public:
       return;
   }
 
+  void setLedScan(bool ledscan) { 
+    if (!f_isRunning)
+      ledScan=ledscan;
+    else
+      return;
+  }
+
   double Temperature() {
     if (!f_isRunning)  return drs->GetBoard(0)->GetTemperature();
     else               return temperature;
-  }
+}
 
 private:
 
@@ -78,6 +94,11 @@ private:
   
   unsigned spillSize;
   unsigned interSpillTime;
+
+#ifdef LED_SCAN
+  /* FILE* ledPort; */
+  bool  ledScan;
+#endif        
 };
 
 

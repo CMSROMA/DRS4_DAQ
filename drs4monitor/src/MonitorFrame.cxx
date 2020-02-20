@@ -39,8 +39,6 @@
 
 using namespace DRS4_data;
 
-
-
 MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _drs) :
   TGMainFrame(p, 250, 350),
   // limits(opt->histolo, opt->histohi),
@@ -199,6 +197,10 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
   interSpillTimeT = new TGTextEntry(hframeI_1, new TGTextBuffer(4));
   interSpillTimeT->SetText(Form("%d",interSpillTime));
   hframeI_1->AddFrame(interSpillTimeT, new TGLayoutHints(kLHintsCenterX,1,5,3,4));
+
+  ledScan = new TGCheckButton(hframeI_1, "LED SCAN", 4);
+  ledScan->SetState(kButtonUp);
+  hframeI_1->AddFrame(ledScan, new TGLayoutHints(kLHintsCenterX,1,5,3,4));
 
   AddFrame(hframeI_1, new TGLayoutHints(kLHintsLeft | kLHintsTop | kLHintsExpandY,2,2,2,2));  
 
@@ -387,13 +389,19 @@ void MonitorFrame::Start() {
 
   if (f_running) { return; }
 
+  bool leds=ledScan->GetState()==kButtonDown;
+  
   std::cout << "Starting Monitor frame.\n";
+  if (leds)
+    std::cout << "Performing LED Scan\n";
 
   nEvtMaxT->SetEnabled(false);
   spillSizeT->SetEnabled(false);
   interSpillTimeT->SetEnabled(false);
   runIdT->SetEnabled(false);
   confT->SetEnabled(false);
+  ledScan->SetEnabled(false);
+  
   lastSpill=0;
 
   if(!drs) {
@@ -417,7 +425,12 @@ void MonitorFrame::Start() {
     delete writer;
   }
   fifo->Discard();
+
+#ifdef LED_SCAN
+  writer = new DRS4_writer(drs, fifo,leds);
+#else
   writer = new DRS4_writer(drs, fifo);
+#endif
   if(options->triggerSource == 0) {
     writer->setAutoTrigger();
   }
@@ -458,8 +471,10 @@ void MonitorFrame::Start() {
   nEvtMax=TString(nEvtMaxT->GetText()).Atoi();
   spillSize=TString(spillSizeT->GetText()).Atoi();
   interSpillTime=TString(interSpillTimeT->GetText()).Atoi();
+
   writer->setSpillSize(spillSize);
   writer->setInterSpillTime(interSpillTime);
+  writer->setLedScan(leds);
   fHProg2->SetRange(0,nEvtMax);
   writer->start(nEvtMax);
   while (!writer->isRunning()) { std::this_thread::sleep_for(std::chrono::milliseconds(10)); };
@@ -527,10 +542,13 @@ int MonitorFrame::Run() {
 
     if(rawWave) {
       iEvtSerial = rawWave->header.getEventNumber();
-      iEvtLocal++;
-      if (iEvtLocal%spillSize == 0) {
+
+      //start new file when reached spill size
+      if (iEvtLocal>0 && iEvtLocal%spillSize == 0) {
         StartNewFile(); //a new spill in H4DAQ language
       }
+
+      iEvtLocal++;
       //std::cout << "Read event #" << iEvtSerial << std::endl;
       //      std::cout << "Trigger cell is " << rawWave->header.getTriggerCell() << std::endl;
       event = new DRS4_data::Event(iEvtSerial, lastSpill, rawWave->header, drs);
@@ -623,6 +641,7 @@ int MonitorFrame::Run() {
   interSpillTimeT->SetEnabled(true);
   runIdT->SetEnabled(true);
   confT->SetEnabled(true);
+  ledScan->SetEnabled(true);
 
   std::cout << "Events processed: " << iEvtProcessed << "\n";
   std::cout << Form("Elapsed time: %6.2f s.\n", timer.RealTime());
@@ -649,6 +668,7 @@ void MonitorFrame::Stop() {
   interSpillTimeT->SetEnabled(true);
   runIdT->SetEnabled(true);
   confT->SetEnabled(true);
+  ledScan->SetEnabled(true);
 
   f_stopWhenEmpty = true;
 }
@@ -669,6 +689,8 @@ void MonitorFrame::HardStop() {
   interSpillTimeT->SetEnabled(true);
   runIdT->SetEnabled(true);
   confT->SetEnabled(true);
+  ledScan->SetEnabled(true);
+
 
   fifo->Discard();
 }
@@ -950,9 +972,8 @@ void MonitorFrame::ParseConfig()
     return;
 
   //do not need reconfig
-  if (confStatus == confT->GetSelected())
-    return;
-
+  // if (confStatus == confT->GetSelected())
+  //   return;
 
   //Configuration possibilities
   TString inputFile;

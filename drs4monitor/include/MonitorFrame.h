@@ -30,6 +30,7 @@
 class TGLabel;
 class TGHProgressBar;
 class TGTextEntry;
+class TGCheckButton;
 class TGComboBox;
 class TCanvas;
 class TRootCanvas;
@@ -100,6 +101,8 @@ protected:
   TGComboBox* confT;
   TGTextEntry* runIdT;
   TGTextEntry* outFileT;
+
+  TGCheckButton *ledScan;
 
   /* TCanvas *fCanvas01; */
   /* TRootCanvas *frCanvas01; */
