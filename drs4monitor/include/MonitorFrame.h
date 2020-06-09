@@ -99,6 +99,11 @@ protected:
   TGTextEntry* interSpillTimeT;
 
   TGComboBox* confT;
+
+  TGComboBox* crystalT;
+  TGComboBox* measCondT;
+  TGComboBox* tagT;
+
   TGTextEntry* runIdT;
   TGTextEntry* outFileT;
 

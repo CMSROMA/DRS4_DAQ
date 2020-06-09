@@ -175,16 +175,12 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
   hframeI->AddFrame(runIdL, new TGLayoutHints(kLHintsCenterX,5,1,3,4));
   
   runIdT = new TGTextEntry(hframeI, new TGTextBuffer(10));
-  runIdT->SetText("test");
+  runIdT->SetText("");
   hframeI->AddFrame(runIdT, new TGLayoutHints(kLHintsCenterX,1,5,3,4));
 
   AddFrame(hframeI, new TGLayoutHints(kLHintsCenterX | kLHintsTop | kLHintsExpandY,2,2,2,2));  
 
   TGHorizontalFrame *hframeI_1 = new TGHorizontalFrame(this,250,60);
-
-  TGLabel *spillSizeL = new TGLabel(hframeI_1, "SpillSize: ");
-  spillSizeL->SetTextFont(ft);
-  hframeI_1->AddFrame(spillSizeL, new TGLayoutHints(kLHintsCenterX,5,1,3,4));
   
   spillSizeT = new TGTextEntry(hframeI_1, new TGTextBuffer(4));
   spillSizeT->SetText(Form("%d",spillSize));
@@ -203,6 +199,76 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
   hframeI_1->AddFrame(ledScan, new TGLayoutHints(kLHintsCenterX,1,5,3,4));
 
   AddFrame(hframeI_1, new TGLayoutHints(kLHintsLeft | kLHintsTop | kLHintsExpandY,2,2,2,2));  
+
+  TGHorizontalFrame *hframeI_2 = new TGHorizontalFrame(this,250,60);
+
+  system("python3 /home/cmsdaq/AutoProcess/listXtals.py --output=/home/cmsdaq/DAQ/drs/DRS4_DAQ/conf/crystals.txt");
+  std::cout << "Retrieved crystals from DB" << std::endl;
+
+  TGLabel *crystalL = new TGLabel(hframeI_2, "Crystal: ");
+  crystalL->SetTextFont(ft);
+  hframeI_2->AddFrame(crystalL, new TGLayoutHints(kLHintsCenterX,5,1,3,4));
+  
+  // crystalT = new TGTextEntry(hframeI, new TGTextBuffer(10));
+  // crystalT->SetText(basename);
+  // crystalT->SetEnabled(true);
+  crystalT = new TGComboBox(hframeI_2);
+  crystalT->Resize(160,22);
+
+  //Read crystals
+  crystalT->Clear();
+  ifstream crystals("conf/crystals.txt");    
+  string line;
+  int ic=0;
+  while(getline(crystals, line)){
+    crystalT->AddEntry(line.c_str(),ic);
+    ++ic;
+  }
+  crystalT->Select(0);
+
+  hframeI_2->AddFrame(crystalT, new TGLayoutHints(kLHintsCenterX,1,5,3,4));
+
+  TGLabel *measCondL = new TGLabel(hframeI_2, "MeasCond: ");
+  measCondL->SetTextFont(ft);
+  hframeI_2->AddFrame(measCondL, new TGLayoutHints(kLHintsCenterX,5,1,3,4));
+  
+  // measCondT = new TGTextEntry(hframeI, new TGTextBuffer(10));
+  // measCondT->SetText(basename);
+  // measCondT->SetEnabled(true);
+  measCondT = new TGComboBox(hframeI_2);
+  measCondT->Resize(160,22);
+  measCondT->AddEntry("WS3-NW-NC-P2-SL-H1",0);
+  measCondT->AddEntry("WS3-NW-NC-P2-SL-H2",1);
+  measCondT->AddEntry("WS3-NW-NC-P2-SL-H3",2);
+  measCondT->Select(1);
+  hframeI_2->AddFrame(measCondT, new TGLayoutHints(kLHintsCenterX,1,5,3,4));
+
+
+  TGLabel *tagL = new TGLabel(hframeI_2, "Tag: ");
+  tagL->SetTextFont(ft);
+  hframeI_2->AddFrame(tagL, new TGLayoutHints(kLHintsCenterX,5,1,3,4));
+  
+  // tagT = new TGTextEntry(hframeI, new TGTextBuffer(10));
+  // tagT->SetText(basename);
+  // tagT->SetEnabled(true);
+  tagT = new TGComboBox(hframeI_2);
+  tagT->Resize(100,22);
+  tagT->AddEntry("",0);
+  tagT->AddEntry("PED_DAILY",1);
+  tagT->AddEntry("LED_DAILY",1);
+  tagT->AddEntry("REF_DAILY",2);
+  tagT->AddEntry("PREIRR_0",3);
+  tagT->AddEntry("PREIRR_1",4);
+  tagT->AddEntry("PREIRR_2",5);
+  tagT->AddEntry("PREIRR_3",6);
+  tagT->AddEntry("POSTIRR_0",7);
+  tagT->AddEntry("POSTIRR_1",8);
+  tagT->AddEntry("POSTIRR_2",9);
+  tagT->AddEntry("POSTIRR_3",10);
+  tagT->Select(0);
+  hframeI_2->AddFrame(tagT, new TGLayoutHints(kLHintsCenterX,1,5,3,4));
+  
+  AddFrame(hframeI_2, new TGLayoutHints(kLHintsLeft | kLHintsTop | kLHintsExpandY,2,2,2,2));  
 
   TGHorizontalFrame *hframeO = new TGHorizontalFrame(this,250,60);
 
@@ -251,7 +317,6 @@ MonitorFrame::MonitorFrame(const TGWindow *p, config * const opt, DRS * const _d
 //  exit->Connect("Clicked()", "TApplication", gApplication, "Terminate(0)");
   hframe->AddFrame(exit, new TGLayoutHints(kLHintsCenterX,5,5,3,4));
   AddFrame(hframe, new TGLayoutHints(kLHintsCenterX | kLHintsTop | kLHintsExpandY,2,2,2,2));
-
 
 // Create a horizontal frame widget with text displays
   TGHorizontalFrame *hframeT = new TGHorizontalFrame(this,250,60);
@@ -400,8 +465,12 @@ void MonitorFrame::Start() {
   interSpillTimeT->SetEnabled(false);
   runIdT->SetEnabled(false);
   confT->SetEnabled(false);
+  crystalT->SetEnabled(false);
+  measCondT->SetEnabled(false);
+  tagT->SetEnabled(false);
   ledScan->SetEnabled(false);
   
+
   lastSpill=0;
 
   if(!drs) {
@@ -416,6 +485,56 @@ void MonitorFrame::Start() {
 
   ParseConfig();
   ConfigDRS();
+
+  TTimeStamp ts(std::time(NULL), 0);
+  TString runId;
+  TString runType;
+
+  if(confT->GetSelected() == 0)
+    {
+      runId="PED";
+      runType="PED";
+    }
+  else if(confT->GetSelected() == 1)
+    {
+      runId="LED";
+      runType="LED";
+      if (leds)
+	runId+="-SCAN";
+    }
+  else if(confT->GetSelected() == 2)
+    {
+      runType="SOURCE";
+      runId=TString(crystalT->GetSelectedEntry()->GetTitle());
+      runId+=Form("-%s",measCondT->GetSelectedEntry()->GetTitle());
+    }
+
+  runId+=Form("-%d",ts.GetDate(0));
+  int counter=1;
+  for(counter=1;counter<999;++counter)
+    {
+      TString run=runId;
+      run+=Form("-%d",counter);
+      TString outDir=options->outDir+"/"+run;
+      if (!gSystem->OpenDirectory(outDir))
+	{
+	  runId=run;
+	  break;
+	}
+    }
+
+  runIdT->SetText(runId);
+  std::cout << "RunID set to " << runId << std::endl;
+  std::cout << "Tag set to " << tagT->GetSelectedEntry()->GetTitle() << std::endl;
+
+  char insertDBcommand[250];
+  if(confT->GetSelected() == 2)
+    sprintf(insertDBcommand,"python3 /home/cmsdaq/AutoProcess/insertRun.py --id=%s --type=%s --xtal=%s --tag=%s\n",runId.Data(),runType.Data(),crystalT->GetSelectedEntry()->GetTitle(),tagT->GetSelectedEntry()->GetTitle());
+  else
+    sprintf(insertDBcommand,"python3 /home/cmsdaq/AutoProcess/insertRun.py --id=%s --type=%s --tag=%s\n",runId.Data(),runType.Data(),tagT->GetSelectedEntry()->GetTitle());
+
+  system(insertDBcommand);
+  std::cout << "Run inserted in DB" << std::endl;
 
   if(writer) {
     if (writer->isRunning() || writer->isJoinable()) {
@@ -641,7 +760,16 @@ int MonitorFrame::Run() {
   interSpillTimeT->SetEnabled(true);
   runIdT->SetEnabled(true);
   confT->SetEnabled(true);
+  crystalT->SetEnabled(true);
+  measCondT->SetEnabled(true);
+  tagT->SetEnabled(true);
   ledScan->SetEnabled(true);
+
+  char insertDBcommand[250];
+  sprintf(insertDBcommand,"python3 /home/cmsdaq/AutoProcess/updateRun.py --id=%s --status=\"DAQ COMPLETED\" --events=%d\n",runIdT->GetText(),iEvtProcessed);
+
+  system(insertDBcommand);
+  std::cout << "Run closed in DB" << std::endl;
 
   std::cout << "Events processed: " << iEvtProcessed << "\n";
   std::cout << Form("Elapsed time: %6.2f s.\n", timer.RealTime());
@@ -668,6 +796,9 @@ void MonitorFrame::Stop() {
   interSpillTimeT->SetEnabled(true);
   runIdT->SetEnabled(true);
   confT->SetEnabled(true);
+  crystalT->SetEnabled(true);
+  measCondT->SetEnabled(true);
+  tagT->SetEnabled(true);
   ledScan->SetEnabled(true);
 
   f_stopWhenEmpty = true;
@@ -689,6 +820,9 @@ void MonitorFrame::HardStop() {
   interSpillTimeT->SetEnabled(true);
   runIdT->SetEnabled(true);
   confT->SetEnabled(true);
+  crystalT->SetEnabled(true);
+  measCondT->SetEnabled(true);
+  tagT->SetEnabled(true);
   ledScan->SetEnabled(true);
 
 
